@@ -5,6 +5,7 @@ import { createNewChat, sendChatMessage, summarizeChat } from '../services/mockA
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts'
 import { Button } from '../components/ui/Button'
 import { BottomNav } from '../components/ui/BottomNav'
+import { useI18n } from '../i18n'
 
 export default function Chat() {
   const [session, setSession] = useState<ChatSession | null>(null)
@@ -13,6 +14,7 @@ export default function Chat() {
   const [ended, setEnded] = useState(false)
   const [summary, setSummary] = useState<{ summary: string; points: Array<{ label: string; value: number }> } | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
+  const { t } = useI18n()
 
   useEffect(() => {
     createNewChat().then(setSession)
@@ -47,11 +49,11 @@ export default function Chat() {
   return (
     <div className="mx-auto max-w-screen-md px-4 pb-24 pt-4 md:px-6">
       <div className="flex items-center justify-between py-3">
-        <h1 className="text-xl font-bold">Chatbot</h1>
+        <h1 className="text-xl font-bold">{t('chatbot')}</h1>
         {!ended ? (
-          <Button variant="secondary" onClick={endChat} disabled={!session || session.messages.length === 0}>End Chat</Button>
+          <Button variant="secondary" onClick={endChat} disabled={!session || session.messages.length === 0}>{t('end_chat')}</Button>
         ) : (
-          <div className="text-sm text-gray-600">Chat ended</div>
+          <div className="text-sm text-gray-600">{t('chat_ended')}</div>
         )}
       </div>
 
@@ -67,7 +69,7 @@ export default function Chat() {
       </div>
 
       {!ended && (
-        <div className="fixed inset-x-0 bottom-0 border-t bg-white p-3">
+        <div className="fixed inset-x-0 bottom-0 border-t bg-white p-3 pb-6">
           <div className="mx-auto max-w-screen-md">
             <div className="flex gap-2">
               <input
@@ -77,7 +79,7 @@ export default function Chat() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSend() }}
               />
-              <Button onClick={handleSend} disabled={!canSend}>Send</Button>
+              <Button onClick={handleSend} disabled={!canSend}>{t('send')}</Button>
             </div>
           </div>
         </div>
@@ -87,7 +89,7 @@ export default function Chat() {
         <div className="mt-6">
           <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
             <h2 className="text-lg font-semibold">Chat Summary</h2>
-            {loading && <div className="mt-2 text-sm text-gray-500">Summarizing…</div>}
+            {loading && <div className="mt-2 text-sm text-gray-500">{t('summarizing')}</div>}
             {summary && (
               <>
                 <p className="mt-2 text-sm leading-relaxed">{summary.summary}</p>

@@ -1,7 +1,9 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useI18n } from '../../i18n'
 
 export function BottomNav() {
   const { pathname } = useLocation()
+  const { t } = useI18n()
   const item = (to: string, label: string) => {
     const active = pathname === to
     return (
@@ -18,9 +20,10 @@ export function BottomNav() {
   return (
     <div className="fixed inset-x-0 bottom-2 z-20 px-4">
       <nav className="mx-auto flex max-w-screen-md items-center gap-2 rounded-full border bg-white p-2 shadow-md">
-        {item('/', 'Home')}
-        {item('/chat', 'Chatbot')}
-        {item('/images', 'Images')}
+        {item('/', t('home'))}
+        {item('/chat', t('chatbot'))}
+        {item('/images', t('images'))}
+        {item('/settings', t('settings'))}
       </nav>
     </div>
   )}
