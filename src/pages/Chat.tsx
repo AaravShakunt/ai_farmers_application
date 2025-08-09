@@ -3,6 +3,8 @@ import { v4 as uuid } from 'uuid'
 import type { ChatMessage, ChatSession } from '../types'
 import { createNewChat, sendChatMessage, summarizeChat } from '../services/mockApi'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts'
+import { Button } from '../components/ui/Button'
+import { BottomNav } from '../components/ui/BottomNav'
 
 export default function Chat() {
   const [session, setSession] = useState<ChatSession | null>(null)
@@ -43,11 +45,11 @@ export default function Chat() {
   const canSend = useMemo(() => !!input.trim() && !loading && !ended, [input, loading, ended])
 
   return (
-    <div className="container-app pb-24">
+    <div className="mx-auto max-w-screen-md px-4 pb-24 pt-4 md:px-6">
       <div className="flex items-center justify-between py-3">
         <h1 className="text-xl font-bold">Chatbot</h1>
         {!ended ? (
-          <button className="btn-secondary" onClick={endChat} disabled={!session || session.messages.length === 0}>End Chat</button>
+          <Button variant="secondary" onClick={endChat} disabled={!session || session.messages.length === 0}>End Chat</Button>
         ) : (
           <div className="text-sm text-gray-600">Chat ended</div>
         )}
@@ -66,16 +68,16 @@ export default function Chat() {
 
       {!ended && (
         <div className="fixed inset-x-0 bottom-0 border-t bg-white p-3">
-          <div className="container-app">
+          <div className="mx-auto max-w-screen-md">
             <div className="flex gap-2">
               <input
-                className="flex-1 rounded-lg border px-3 py-2"
+                className="flex-1 rounded-xl border px-3 py-2"
                 placeholder="Type your message"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSend() }}
               />
-              <button className="btn" onClick={handleSend} disabled={!canSend}>Send</button>
+              <Button onClick={handleSend} disabled={!canSend}>Send</Button>
             </div>
           </div>
         </div>
@@ -83,7 +85,7 @@ export default function Chat() {
 
       {ended && (
         <div className="mt-6">
-          <div className="card">
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
             <h2 className="text-lg font-semibold">Chat Summary</h2>
             {loading && <div className="mt-2 text-sm text-gray-500">Summarizing…</div>}
             {summary && (
@@ -104,6 +106,8 @@ export default function Chat() {
           </div>
         </div>
       )}
+
+      <BottomNav />
     </div>
   )
 }

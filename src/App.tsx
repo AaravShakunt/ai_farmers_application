@@ -7,6 +7,7 @@ import { Header } from './components/ui/Header'
 import { OnlineStatus } from './components/ui/OnlineStatus'
 import { useEffect } from 'react'
 import { initRequestQueue } from './lib/request'
+import { BottomNav } from './components/ui/BottomNav'
 
 export default function App() {
   useEffect(() => {
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="/chat" element={<Chat />} />
         <Route path="/images" element={<Images />} />
       </Routes>
+      <div className="sm:hidden"><BottomNav /></div>
     </div>
   )
 }
