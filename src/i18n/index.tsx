@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import localforage from 'localforage'
 
-export type Language = 'en' | 'hi'
+export type Language = 'en' | 'hi' | 'kn'
 
 const TRANSLATIONS: Record<Language, Record<string, string>> = {
   en: {
-    app_title: 'AI Farmers',
+    app_title: 'Farmers.AI',
     home: 'Home',
     chatbot: 'Chatbot',
     images: 'Image Models',
@@ -22,6 +22,96 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     analyzing: 'Analyzing…',
     language: 'Language',
     choose_language: 'Choose your language',
+    welcome: 'Welcome to Farmers.AI',
+    select_language: 'Please select your preferred language',
+    continue: 'Continue',
+    loading: 'Loading...',
+    no_data: 'No data available',
+    no_prices: 'No prices available',
+    per_kg: 'per kg',
+    rupees: '₹',
+    // New Home Page Translations
+    quick_actions: 'Quick Actions',
+    ai_advisor: 'AI Advisor',
+    gov_schemes: 'Gov Schemes',
+    weather_alert: 'Weather Alert',
+    high_temp_warning: 'High temperature may affect crops',
+    updated_now: 'Updated now',
+    search_crops: 'Search crops...',
+    crop_analysis: 'Crop Analysis',
+    analyze_crop_health: 'Analyze crop health',
+    financial_aid: 'Financial Aid',
+    loans_subsidies: 'Loans & Subsidies',
+    todays_tasks: "Today's Tasks",
+    check_irrigation: 'Check irrigation system',
+    apply_fertilizer: 'Apply fertilizer to wheat field',
+    // Government Schemes Translations
+    government_schemes: 'Government Schemes',
+    ministry_agriculture: 'Ministry of Agriculture & Farmers Welfare',
+    updated: 'Updated',
+    urgent_notice: 'URGENT NOTICE',
+    crop_insurance_deadline: 'Crop Insurance Scheme Registration Deadline',
+    apply_before: 'Apply before',
+    new: 'NEW',
+    urgent: 'URGENT',
+    subsidy: 'Subsidy',
+    loan: 'Loan',
+    insurance: 'Insurance',
+    training: 'Training',
+    max_benefit: 'Max Benefit',
+    deadline: 'Deadline',
+    apply_now: 'Apply Now',
+    view_all_schemes: 'View All Schemes',
+    official_website: 'Official Website',
+    helpline: 'Helpline',
+    eligibility: 'Eligibility',
+    // Header Navigation Translations
+    smart_farming: 'Smart Farming Solutions',
+    farmer_name: 'Rajesh Kumar',
+    location: 'Karnataka, India',
+    logout: 'Logout',
+    // Tasks Page Translations
+    tasks: 'Tasks',
+    my_plots: 'My Plots',
+    manage_your_farming_plots: 'Manage your farming plots',
+    add_plot: 'Add Plot',
+    total_plots: 'Total Plots',
+    total_area: 'Total Area',
+    active_plots: 'Active Plots',
+    crop: 'Crop',
+    area: 'Area',
+    soil_type: 'Soil Type',
+    irrigation: 'Irrigation',
+    planted_on: 'Planted On',
+    expected_harvest: 'Expected Harvest',
+    last_consultation: 'Last Consultation',
+    query: 'Query',
+    workflow: 'Workflow',
+    no_workflow: 'No Workflow',
+    add_new_plot: 'Add New Plot',
+    plot_name: 'Plot Name',
+    select_crop: 'Select Crop',
+    select_soil_type: 'Select Soil Type',
+    select_irrigation: 'Select Irrigation',
+    irrigation_type: 'Irrigation Type',
+    planting_date: 'Planting Date',
+    cancel: 'Cancel',
+    // Workflow Page Translations
+    loading_workflow: 'Loading workflow...',
+    no_workflow_available: 'No Workflow Available',
+    no_workflow_description: 'Start a chat consultation to generate a personalized workflow for this plot.',
+    back_to_plots: 'Back to Plots',
+    ask_ai: 'Ask AI',
+    last_updated: 'Last Updated',
+    completed: 'Completed',
+    complete: 'Complete',
+    due: 'Due',
+    estimated_time: 'Estimated Time',
+    category: 'Category',
+    tools_required: 'Tools Required',
+    notes: 'Notes',
+    get_more_advice: 'Get More Advice',
+    mark_all_complete: 'Mark All Complete',
   },
   hi: {
     app_title: 'एआई फ़ार्मर्स',
@@ -41,6 +131,121 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     analyzing: 'विश्लेषण हो रहा है…',
     language: 'भाषा',
     choose_language: 'अपनी भाषा चुनें',
+    welcome: 'एआई फ़ार्मर्स में आपका स्वागत है',
+    select_language: 'कृपया अपनी पसंदीदा भाषा चुनें',
+    continue: 'जारी रखें',
+    loading: 'लोड हो रहा है...',
+    no_data: 'कोई डेटा उपलब्ध नहीं',
+    no_prices: 'कोई भाव उपलब्ध नहीं',
+    per_kg: 'प्रति किलो',
+    rupees: '₹',
+    // New Home Page Translations
+    quick_actions: 'त्वरित कार्य',
+    ai_advisor: 'एआई सलाहकार',
+    gov_schemes: 'सरकारी योजनाएं',
+    weather_alert: 'मौसम चेतावनी',
+    high_temp_warning: 'अधिक तापमान फसलों को प्रभावित कर सकता है',
+    updated_now: 'अभी अपडेट किया गया',
+    search_crops: 'फसलें खोजें...',
+    crop_analysis: 'फसल विश्लेषण',
+    analyze_crop_health: 'फसल स्वास्थ्य का विश्लेषण करें',
+    financial_aid: 'वित्तीय सहायता',
+    loans_subsidies: 'ऋण और सब्सिडी',
+    todays_tasks: 'आज के कार्य',
+    check_irrigation: 'सिंचाई प्रणाली की जांच करें',
+    apply_fertilizer: 'गेहूं के खेत में खाद डालें',
+    // Government Schemes Translations
+    government_schemes: 'सरकारी योजनाएं',
+    ministry_agriculture: 'कृषि एवं किसान कल्याण मंत्रालय',
+    updated: 'अपडेट किया गया',
+    urgent_notice: 'तत्काल सूचना',
+    crop_insurance_deadline: 'फसल बीमा योजना पंजीकरण की अंतिम तिथि',
+    apply_before: 'इससे पहले आवेदन करें',
+    new: 'नई',
+    urgent: 'तत्काल',
+    subsidy: 'सब्सिडी',
+    loan: 'ऋण',
+    insurance: 'बीमा',
+    training: 'प्रशिक्षण',
+    max_benefit: 'अधिकतम लाभ',
+    deadline: 'अंतिम तिथि',
+    apply_now: 'अभी आवेदन करें',
+    view_all_schemes: 'सभी योजनाएं देखें',
+    official_website: 'आधिकारिक वेबसाइट',
+    helpline: 'हेल्पलाइन',
+    eligibility: 'पात्रता',
+    // Header Navigation Translations
+    smart_farming: 'स्मार्ट कृषि समाधान',
+    farmer_name: 'राजेश कुमार',
+    location: 'कर्नाटक, भारत',
+    logout: 'लॉगआउट',
+  },
+  kn: {
+    app_title: 'ಎಐ ರೈತರು',
+    home: 'ಮುಖ್ಯ',
+    chatbot: 'ಚಾಟ್‌ಬಾಟ್',
+    images: 'ಚಿತ್ರ ಮಾದರಿಗಳು',
+    settings: 'ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
+    weather: 'ಹವಾಮಾನ',
+    temp: 'ತಾಪಮಾನ',
+    humidity: 'ಆರ್ದ್ರತೆ',
+    condition: 'ಸ್ಥಿತಿ',
+    market_prices: 'ಮಾರುಕಟ್ಟೆ ಬೆಲೆಗಳು',
+    chat_ended: 'ಚಾಟ್ ಮುಗಿದಿದೆ',
+    end_chat: 'ಚಾಟ್ ಮುಗಿಸಿ',
+    send: 'ಕಳುಹಿಸಿ',
+    summarizing: 'ಸಾರಾಂಶ ಮಾಡುತ್ತಿದೆ…',
+    analyzing: 'ವಿಶ್ಲೇಷಣೆ ಮಾಡುತ್ತಿದೆ…',
+    language: 'ಭಾಷೆ',
+    choose_language: 'ನಿಮ್ಮ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆ ಮಾಡಿ',
+    welcome: 'ಎಐ ರೈತರಿಗೆ ಸ್ವಾಗತ',
+    select_language: 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಆದ್ಯತೆಯ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆ ಮಾಡಿ',
+    continue: 'ಮುಂದುವರಿಸಿ',
+    loading: 'ಲೋಡ್ ಆಗುತ್ತಿದೆ...',
+    no_data: 'ಯಾವುದೇ ಡೇಟಾ ಲಭ್ಯವಿಲ್ಲ',
+    no_prices: 'ಯಾವುದೇ ಬೆಲೆಗಳು ಲಭ್ಯವಿಲ್ಲ',
+    per_kg: 'ಪ್ರತಿ ಕಿಲೋ',
+    rupees: '₹',
+    // New Home Page Translations
+    quick_actions: 'ತ್ವರಿತ ಕ್ರಿಯೆಗಳು',
+    ai_advisor: 'ಎಐ ಸಲಹೆಗಾರ',
+    gov_schemes: 'ಸರ್ಕಾರಿ ಯೋಜನೆಗಳು',
+    weather_alert: 'ಹವಾಮಾನ ಎಚ್ಚರಿಕೆ',
+    high_temp_warning: 'ಹೆಚ್ಚಿನ ತಾಪಮಾನ ಬೆಳೆಗಳ ಮೇಲೆ ಪರಿಣಾಮ ಬೀರಬಹುದು',
+    updated_now: 'ಈಗ ಅಪ್‌ಡೇಟ್ ಮಾಡಲಾಗಿದೆ',
+    search_crops: 'ಬೆಳೆಗಳನ್ನು ಹುಡುಕಿ...',
+    crop_analysis: 'ಬೆಳೆ ವಿಶ್ಲೇಷಣೆ',
+    analyze_crop_health: 'ಬೆಳೆ ಆರೋಗ್ಯವನ್ನು ವಿಶ್ಲೇಷಿಸಿ',
+    financial_aid: 'ಆರ್ಥಿಕ ಸಹಾಯ',
+    loans_subsidies: 'ಸಾಲಗಳು ಮತ್ತು ಸಬ್ಸಿಡಿಗಳು',
+    todays_tasks: 'ಇಂದಿನ ಕಾರ್ಯಗಳು',
+    check_irrigation: 'ನೀರಾವರಿ ವ್ಯವಸ್ಥೆಯನ್ನು ಪರಿಶೀಲಿಸಿ',
+    apply_fertilizer: 'ಗೋಧಿ ಹೊಲಕ್ಕೆ ಗೊಬ್ಬರ ಹಾಕಿ',
+    // Government Schemes Translations
+    government_schemes: 'ಸರ್ಕಾರಿ ಯೋಜನೆಗಳು',
+    ministry_agriculture: 'ಕೃಷಿ ಮತ್ತು ರೈತ ಕಲ್ಯಾಣ ಸಚಿವಾಲಯ',
+    updated: 'ಅಪ್‌ಡೇಟ್ ಮಾಡಲಾಗಿದೆ',
+    urgent_notice: 'ತುರ್ತು ಸೂಚನೆ',
+    crop_insurance_deadline: 'ಬೆಳೆ ವಿಮಾ ಯೋಜನೆ ನೋಂದಣಿ ಅಂತಿಮ ದಿನಾಂಕ',
+    apply_before: 'ಮೊದಲು ಅರ್ಜಿ ಸಲ್ಲಿಸಿ',
+    new: 'ಹೊಸ',
+    urgent: 'ತುರ್ತು',
+    subsidy: 'ಸಬ್ಸಿಡಿ',
+    loan: 'ಸಾಲ',
+    insurance: 'ವಿಮೆ',
+    training: 'ತರಬೇತಿ',
+    max_benefit: 'ಗರಿಷ್ಠ ಲಾಭ',
+    deadline: 'ಅಂತಿಮ ದಿನಾಂಕ',
+    apply_now: 'ಈಗ ಅರ್ಜಿ ಸಲ್ಲಿಸಿ',
+    view_all_schemes: 'ಎಲ್ಲಾ ಯೋಜನೆಗಳನ್ನು ವೀಕ್ಷಿಸಿ',
+    official_website: 'ಅಧಿಕೃತ ವೆಬ್‌ಸೈಟ್',
+    helpline: 'ಸಹಾಯವಾಣಿ',
+    eligibility: 'ಅರ್ಹತೆ',
+    // Header Navigation Translations
+    smart_farming: 'ಸ್ಮಾರ್ಟ್ ಕೃಷಿ ಪರಿಹಾರಗಳು',
+    farmer_name: 'ರಾಜೇಶ್ ಕುಮಾರ್',
+    location: 'ಕರ್ನಾಟಕ, ಭಾರತ',
+    logout: 'ಲಾಗ್‌ಔಟ್',
   },
 }
 
@@ -48,23 +253,37 @@ type I18nContextType = {
   lang: Language
   t: (key: string) => string
   setLang: (l: Language) => void
+  isLanguageSelected: boolean
 }
 
-const I18nContext = createContext<I18nContextType>({ lang: 'en', t: (k) => k, setLang: () => {} })
+const I18nContext = createContext<I18nContextType>({ 
+  lang: 'en', 
+  t: (k) => k, 
+  setLang: () => {}, 
+  isLanguageSelected: false 
+})
 
 const LANG_KEY = 'settings:language'
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Language>('en')
+  const [isLanguageSelected, setIsLanguageSelected] = useState(false)
 
   useEffect(() => {
+    // Clear language selection for testing - comment out for production
+    localforage.removeItem(LANG_KEY)
+    
     localforage.getItem<Language>(LANG_KEY).then((saved) => {
-      if (saved) setLangState(saved)
+      if (saved) {
+        setLangState(saved)
+        setIsLanguageSelected(true)
+      }
     })
   }, [])
 
   const setLang = (l: Language) => {
     setLangState(l)
+    setIsLanguageSelected(true)
     void localforage.setItem(LANG_KEY, l)
   }
 
@@ -73,7 +292,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     return (key: string) => dict[key] ?? key
   }, [lang])
 
-  const value = useMemo(() => ({ lang, t, setLang }), [lang, t])
+  const value = useMemo(() => ({ lang, t, setLang, isLanguageSelected }), [lang, t, isLanguageSelected])
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
 }
@@ -81,4 +300,3 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 export function useI18n() {
   return useContext(I18nContext)
 }
-

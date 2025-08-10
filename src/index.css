@@ -1,4 +1,35 @@
 @import "tailwindcss";
 
 html, body, #root { height: 100%; }
-body { background-color: white; color: #111827; }
+
+/* Light theme (default) */
+body {
+  background-color: white;
+  color: #111827;
+  transition: background-color 300ms ease-in-out, color 300ms ease-in-out;
+}
+
+/* Dark theme */
+html.dark body {
+  background-color: #111827;
+  color: #f9fafb;
+}
+
+/* Hide scrollbar for horizontal scroll */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar { 
+  display: none;  /* Safari and Chrome */
+}
+
+/* Marquee animation for alert banner */
+@keyframes marquee {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-marquee {
+  animation: marquee 8s linear infinite;
+}
