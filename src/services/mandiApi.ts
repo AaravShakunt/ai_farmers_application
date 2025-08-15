@@ -1,4 +1,4 @@
-const API_KEY = '579b464db66ec23bdd0000012b9554beebf9489759e286fe0da7d995'
+const API_KEY = import.meta.env.VITE_DATA_GOV_API_KEY || 'YOUR-API-KEY'
 const BASE_URL = 'https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070'
 
 export interface MandiPrice {
