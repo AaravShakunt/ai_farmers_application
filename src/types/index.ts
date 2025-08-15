@@ -20,6 +20,28 @@ export type MarketPrice = {
   unit: 'kg'
 }
 
+export type MandiPrice = {
+  state: string
+  district: string
+  market: string
+  commodity: string
+  variety: string
+  arrival_date: string
+  min_price: string
+  max_price: string
+  modal_price: string
+}
+
+export type CropPriceDisplay = {
+  name: string
+  unit: string
+  price: number
+  change: number
+  icon: string
+  market?: string
+  date?: string
+}
+
 export type WeatherData = {
   temperatureC: number
   humidityPct: number

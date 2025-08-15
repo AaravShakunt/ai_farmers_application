@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useI18n } from '../../i18n'
 import type { WeatherData } from '../../types'
+import { fetchWeatherData, clearWeatherCache } from '../../services/weatherApi'
 
 interface WeatherCardProps {
   data: WeatherData | null
@@ -10,6 +11,38 @@ interface WeatherCardProps {
 export function WeatherCard({ data, loading }: WeatherCardProps) {
   const { t } = useI18n()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [apiWeatherData, setApiWeatherData] = useState<any>(null)
+  const [apiLoading, setApiLoading] = useState(true)
+
+  // Load weather data from API with detailed logging
+  useEffect(() => {
+    const loadWeatherData = async () => {
+      try {
+        setApiLoading(true)
+        console.log('🚀 WEATHER CARD: Starting weather data loading...')
+        console.log('🌤️ WEATHER CARD: Using Open-Meteo API (free, no key required)')
+        
+        const weatherData = await fetchWeatherData()
+        setApiWeatherData(weatherData)
+        
+        console.log('✅ WEATHER CARD: Weather data loaded successfully')
+        console.log(`📊 WEATHER CARD: Current temp: ${weatherData.temperatureC}°C, Condition: ${weatherData.condition}`)
+        console.log(`🌦️ WEATHER CARD: 7-day forecast available`)
+        
+      } catch (error) {
+        console.error('❌ WEATHER CARD: Weather data loading failed:', error)
+        console.warn('🟡 WEATHER CARD: Falling back to component props or default data')
+      } finally {
+        setApiLoading(false)
+        console.log('✅ WEATHER CARD: Weather data loading completed')
+      }
+    }
+    
+    loadWeatherData()
+  }, [])
+
+  // Use API data if available, otherwise fallback to props data
+  const weatherData = apiWeatherData || data
 
   const getWeatherIcon = (condition: string) => {
     switch (condition.toLowerCase()) {
@@ -131,7 +164,7 @@ export function WeatherCard({ data, loading }: WeatherCardProps) {
 
   const uvInfo = getUvInfo(mockWeatherData.uvIndex)
 
-  if (loading) {
+  if (loading || apiLoading) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
         <div className="animate-pulse">
@@ -143,7 +176,7 @@ export function WeatherCard({ data, loading }: WeatherCardProps) {
     )
   }
 
-  if (!data) {
+  if (!weatherData) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
         <div className="flex items-center justify-between mb-3">
@@ -197,14 +230,14 @@ export function WeatherCard({ data, loading }: WeatherCardProps) {
           {/* Main Weather Display */}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
-              <div className="text-2xl mr-2">{getWeatherIcon(data.condition)}</div>
+              <div className="text-2xl mr-2">{getWeatherIcon(weatherData.condition)}</div>
               <div>
-                <div className="text-xl font-bold text-gray-800">{data.temperatureC}°C</div>
-                <div className="text-xs text-gray-600 capitalize">{data.condition}</div>
+                <div className="text-xl font-bold text-gray-800">{weatherData.temperatureC}°C</div>
+                <div className="text-xs text-gray-600 capitalize">{weatherData.condition}</div>
               </div>
             </div>
             <div className="text-right text-xs">
-              <div className="text-gray-600">💧 {data.humidityPct}% • 💨 {mockWeatherData.windSpeed} km/h</div>
+              <div className="text-gray-600">💧 {weatherData.humidityPct}% • 💨 {mockWeatherData.windSpeed} km/h</div>
               <div className="text-gray-500">Feels like {mockWeatherData.feelsLike}°C</div>
             </div>
           </div>
@@ -268,16 +301,16 @@ export function WeatherCard({ data, loading }: WeatherCardProps) {
               {/* Current Conditions Overview */}
               <div className="grid grid-cols-2 gap-6 mb-6">
                 <div className="text-center">
-                  <div className="text-6xl mb-2">{getWeatherIcon(data.condition)}</div>
-                  <div className="text-4xl font-bold text-gray-800">{data.temperatureC}°C</div>
-                  <div className="text-sm text-gray-600 capitalize">{data.condition}</div>
+                  <div className="text-6xl mb-2">{getWeatherIcon(weatherData.condition)}</div>
+                  <div className="text-4xl font-bold text-gray-800">{weatherData.temperatureC}°C</div>
+                  <div className="text-sm text-gray-600 capitalize">{weatherData.condition}</div>
                   <div className="text-xs text-gray-500 mt-1">Feels like {mockWeatherData.feelsLike}°C</div>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">💧 Humidity</span>
-                    <span className="font-semibold text-gray-800">{data.humidityPct}%</span>
+                    <span className="font-semibold text-gray-800">{weatherData.humidityPct}%</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">💨 Wind</span>
