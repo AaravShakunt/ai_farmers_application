@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { v4 as uuid } from 'uuid'
-import type { ChatMessage, ChatSession } from '../types'
-import { createNewChat, sendChatMessage, summarizeChat } from '../services/mockApi'
+import type { ChatSession } from '../types'
+import { createNewChatSession, generateChatSummary, checkChatHealth } from '../services/chatApi'
 import { BottomNav } from '../components/ui/BottomNav'
+import { ChatInterface } from '../components/chat/ChatInterface'
 import { useI18n } from '../i18n'
 
 type ImageCategory = 'leaf' | 'soil' | 'insects'
@@ -20,19 +21,35 @@ interface UploadedImage {
 
 export default function Chat() {
   const [session, setSession] = useState<ChatSession | null>(null)
-  const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [ended, setEnded] = useState(false)
+  const [chatHealthy, setChatHealthy] = useState(true)
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([])
   const [showImageModal, setShowImageModal] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<ImageCategory>('leaf')
-  const endRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
   const { t } = useI18n()
 
   useEffect(() => {
-    createNewChat().then(setSession)
+    // Check chat service health and create session
+    const initializeChat = async () => {
+      try {
+        const healthy = await checkChatHealth()
+        setChatHealthy(healthy)
+        
+        if (healthy) {
+          const newSession = await createNewChatSession()
+          setSession(newSession)
+        }
+      } catch (error) {
+        console.error('Failed to initialize chat:', error)
+        setChatHealthy(false)
+      }
+    }
+    
+    initializeChat()
+    
     // Load saved images from localStorage
     const savedImages = localStorage.getItem('chatImages')
     if (savedImages) {
@@ -40,34 +57,10 @@ export default function Chat() {
     }
   }, [])
 
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [session?.messages.length])
-
   // Save images to localStorage whenever uploadedImages changes
   useEffect(() => {
     localStorage.setItem('chatImages', JSON.stringify(uploadedImages))
   }, [uploadedImages])
-
-  const handleSend = async () => {
-    if (!session || !input.trim()) return
-    const userMsg: ChatMessage = { id: uuid(), role: 'user', content: input.trim(), createdAt: Date.now() }
-    setSession({ ...session, messages: [...session.messages, userMsg] })
-    setInput('')
-    setLoading(true)
-    const assistant = await sendChatMessage([...session.messages, userMsg])
-    setSession((prev) => (prev ? { ...prev, messages: [...prev.messages, assistant] } : prev))
-    setLoading(false)
-    
-    // Add menu message after assistant response
-    const menuMsg: ChatMessage = {
-      id: uuid(),
-      role: 'assistant',
-      content: 'CHAT_MENU',
-      createdAt: Date.now()
-    }
-    setSession((prev) => (prev ? { ...prev, messages: [...prev.messages, menuMsg] } : prev))
-  }
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -111,176 +104,87 @@ export default function Chat() {
     if (!session) return
     setEnded(true)
     setLoading(true)
-    const res = await summarizeChat(session.messages)
-    setLoading(false)
     
-    // Navigate to workflow page with chat data
-    navigate('/workflow', { 
-      state: { 
-        chatSummary: res,
-        chatId: session.id,
-        images: uploadedImages.filter(img => img.chatSessionId === session.id)
-      } 
-    })
-  }
-
-  const handleContinueChat = () => {
-    // Remove the menu message and continue
-    if (session) {
-      const messagesWithoutMenu = session.messages.filter(msg => msg.content !== 'CHAT_MENU')
-      setSession({ ...session, messages: messagesWithoutMenu })
+    try {
+      const chatSummary = await generateChatSummary(session.messages)
+      setLoading(false)
+      
+      // Navigate to workflow page with chat data
+      navigate('/workflow', { 
+        state: { 
+          chatSummary,
+          chatId: session.id,
+          images: uploadedImages.filter(img => img.chatSessionId === session.id)
+        } 
+      })
+    } catch (error) {
+      console.error('Failed to generate chat summary:', error)
+      setLoading(false)
+      
+      // Navigate anyway with a generic summary
+      navigate('/workflow', { 
+        state: { 
+          chatSummary: 'Agricultural consultation completed',
+          chatId: session.id,
+          images: uploadedImages.filter(img => img.chatSessionId === session.id)
+        } 
+      })
     }
   }
 
-  const canSend = useMemo(() => !!input.trim() && !loading && !ended, [input, loading, ended])
 
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="mx-auto max-w-screen-md px-4 pb-24 pt-4 md:px-6">
         
-        {/* Chat Messages Area */}
-        <div className="space-y-3 mb-20">
-          {session?.messages.map((m) => {
-            // Special handling for menu message
-            if (m.content === 'CHAT_MENU') {
-              return (
-                <div key={m.id} className="flex justify-start">
-                  <div className="bg-white rounded-2xl rounded-bl-md p-4 shadow-sm max-w-xs">
-                    <div className="text-sm text-gray-800 mb-3">
-                      What would you like to do next?
-                    </div>
-                    <div className="space-y-2">
-                      <button
-                        onClick={handleEndChat}
-                        className="w-full bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
-                      >
-                        End Chat & Get Workflow
-                      </button>
-                      <button
-                        onClick={handleContinueChat}
-                        className="w-full bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium"
-                      >
-                        Continue Chatting
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )
-            }
-
-            return (
-              <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl shadow-sm ${
-                  m.role === 'user' 
-                    ? 'bg-green-500 text-white rounded-br-md' 
-                    : 'bg-white text-gray-800 rounded-bl-md'
-                }`}>
-                  <div className="text-sm leading-relaxed">{m.content}</div>
-                  <div className={`text-xs mt-1 ${
-                    m.role === 'user' ? 'text-green-100' : 'text-gray-500'
-                  }`}>
-                    {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-          
-          {loading && !ended && (
-            <div className="flex justify-start">
-              <div className="bg-white rounded-2xl rounded-bl-md p-4 shadow-sm max-w-xs">
-                <div className="flex items-center space-x-2">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                  </div>
-                  <span className="text-sm text-gray-600">AI is typing...</span>
-                </div>
-              </div>
-            </div>
-          )}
-          <div ref={endRef} />
-        </div>
-      </div>
-
-      {/* Enhanced Aesthetic Input Area - Fixed above bottom nav */}
-      {!ended && (
-        <div className="fixed inset-x-0 bottom-16 bg-gradient-to-t from-white via-white to-white/95 backdrop-blur-sm border-t border-gray-200/50 py-4 px-2 z-10 shadow-lg">
-          <div className="mx-auto max-w-screen-md px-2">
-            <div className="flex items-center justify-center space-x-2">
-              {/* Smaller Image Upload Icon */}
-              <button
-                onClick={() => {
-                  setSelectedCategory('leaf') // Default to leaf
-                  setShowImageModal(true)
-                }}
-                className="flex-shrink-0 p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 relative group"
-                title="Upload image"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                {/* Enhanced image count badge */}
-                {uploadedImages.filter(img => img.chatSessionId === session?.id).length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold shadow-md animate-pulse">
-                    {uploadedImages.filter(img => img.chatSessionId === session?.id).length}
-                  </span>
-                )}
-                {/* Hover tooltip */}
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                  Upload Image
-                </div>
-              </button>
-
-              {/* Smaller Voice Input Button */}
-              <button
-                className="flex-shrink-0 p-2.5 bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 relative group"
-                title="Voice message"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-                {/* Hover tooltip */}
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                  Voice Message
-                </div>
-              </button>
-
-              {/* Enhanced Message Input Container - 85% width */}
-              <div className="flex-1 max-w-[85%] relative">
-                <div className="relative bg-white rounded-3xl shadow-lg border border-gray-200 focus-within:border-green-500 focus-within:ring-2 focus-within:ring-green-200 transition-all duration-200">
-                  <input
-                    className="w-full bg-transparent text-gray-900 rounded-3xl px-6 py-3.5 pr-16 focus:outline-none placeholder-gray-500 text-base"
-                    placeholder="Type a message..."
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleSend() }}
-                  />
-                  
-                  {/* Enhanced Send Button */}
-                  <button
-                    onClick={handleSend}
-                    disabled={!canSend}
-                    className={`absolute right-2 top-1/2 transform -translate-y-1/2 p-2.5 rounded-2xl transition-all duration-200 ${
-                      canSend 
-                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105' 
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                  </button>
-                </div>
-                
-                {/* Input field glow effect */}
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-green-400/20 to-blue-400/20 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 -z-10"></div>
-              </div>
+        {/* Chat Health Status */}
+        {!chatHealthy && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <span className="text-red-500">⚠️</span>
+              <span className="text-red-700 text-sm">
+                Chat service unavailable. Please check your API configuration.
+              </span>
             </div>
           </div>
-        </div>
-      )}
+        )}
+        
+        {/* Chat Interface */}
+        {session && (
+          <ChatInterface
+            session={session}
+            onSessionUpdate={setSession}
+            onEndChat={handleEndChat}
+            loading={loading}
+            setLoading={setLoading}
+            ended={ended}
+            chatHealthy={chatHealthy}
+          />
+        )}
+
+        {/* Image Upload Button */}
+        {!ended && session && (
+          <div className="fixed bottom-20 right-4 z-20">
+            <button
+              onClick={() => {
+                setSelectedCategory('leaf')
+                setShowImageModal(true)
+              }}
+              className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 relative group"
+              title="Upload image"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              {uploadedImages.filter(img => img.chatSessionId === session?.id).length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold shadow-md animate-pulse">
+                  {uploadedImages.filter(img => img.chatSessionId === session?.id).length}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Enhanced Image Upload Modal with Category Selection */}
       {showImageModal && (
