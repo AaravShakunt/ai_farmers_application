@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ImageCategory } from '../types'
-import { analyzeImage } from '../services/mockApi'
+import { analyzeImage } from '../services/mlApi'
 import { BottomNav } from '../components/ui/BottomNav'
 import { Card } from '../components/ui/Card'
 import { useI18n } from '../i18n'
