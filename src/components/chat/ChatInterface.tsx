@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { v4 as uuid } from 'uuid'
 import type { ChatMessage, ChatSession } from '../../types'
 import { sendMessageToGemini } from '../../services/chatApi'
-import { VoiceInput } from '../ui/VoiceInput'
+import { OnlineVoiceInput } from '../ui/OnlineVoiceInput'
+import { OfflineVoiceInput } from '../ui/OfflineVoiceInput'
 import { VoiceSupport } from '../ui/VoiceSupport'
 
 interface ChatInterfaceProps {
@@ -63,10 +64,10 @@ export function ChatInterface({
         content: 'CHAT_MENU',
         createdAt: Date.now()
       }
-      onSessionUpdate(prev => ({ 
-        ...prev, 
-        messages: [...prev.messages, menuMsg] 
-      }))
+      onSessionUpdate({ 
+        ...session, 
+        messages: [...session.messages, menuMsg] 
+      })
     } catch (error) {
       console.error('Failed to send message:', error)
       
@@ -77,10 +78,10 @@ export function ChatInterface({
         content: 'Sorry, I encountered an error. Please check your connection and try again.',
         createdAt: Date.now()
       }
-      onSessionUpdate(prev => ({ 
-        ...prev, 
-        messages: [...prev.messages, errorMsg] 
-      }))
+      onSessionUpdate({ 
+        ...session, 
+        messages: [...session.messages, errorMsg] 
+      })
     }
     
     setLoading(false)
@@ -171,12 +172,19 @@ export function ChatInterface({
         <div className="fixed inset-x-0 bottom-16 bg-gradient-to-t from-white via-white to-white/95 backdrop-blur-sm border-t border-gray-200/50 py-4 px-2 z-10 shadow-lg">
           <div className="mx-auto max-w-screen-md px-2">
             <div className="flex items-center justify-center space-x-2">
-              {/* Voice Input Button */}
-              <VoiceInput
-                onTranscript={(transcript) => handleSend(transcript)}
-                disabled={!chatHealthy || loading || ended}
-                className="flex-shrink-0"
-              />
+              {/* Voice Input Buttons */}
+              <div className="flex space-x-1 flex-shrink-0">
+                <OnlineVoiceInput
+                  onTranscript={(transcript) => handleSend(transcript)}
+                  disabled={!chatHealthy || loading || ended}
+                  className="flex-shrink-0"
+                />
+                <OfflineVoiceInput
+                  onTranscript={(transcript) => handleSend(transcript)}
+                  disabled={!chatHealthy || loading || ended}
+                  className="flex-shrink-0"
+                />
+              </div>
               
               {/* Message Input Container */}
               <div className="flex-1 max-w-[75%] relative">

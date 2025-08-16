@@ -4,6 +4,24 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    headers: {
+      'Cross-Origin-Embedder-Policy': 'credentialless',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+    },
+    fs: {
+      allow: ['..']
+    }
+  },
+  worker: {
+    format: 'es'
+  },
+  build: {
+    target: 'esnext',
+    rollupOptions: {
+      external: []
+    }
+  },
   plugins: [
     react(),
     VitePWA({
