@@ -112,6 +112,15 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     notes: 'Notes',
     get_more_advice: 'Get More Advice',
     mark_all_complete: 'Mark All Complete',
+    // Voice Input Translations
+    start_recording: 'Start voice recording',
+    stop_recording: 'Stop voice recording',
+    listening: 'Listening',
+    voice_not_supported: 'Voice recognition is not supported in your browser',
+    recording_stopped: 'Recording stopped',
+    speak_now: 'Speak now',
+    microphone_access_denied: 'Please allow microphone access in your browser and try again',
+    allow_microphone: 'Allow Microphone Access',
   },
   hi: {
     app_title: 'एआई फ़ार्मर्स',
@@ -179,6 +188,15 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     farmer_name: 'राजेश कुमार',
     location: 'कर्नाटक, भारत',
     logout: 'लॉगआउट',
+    // Voice Input Translations
+    start_recording: 'वॉयस रिकॉर्डिंग शुरू करें',
+    stop_recording: 'वॉयस रिकॉर्डिंग बंद करें',
+    listening: 'सुन रहा है',
+    voice_not_supported: 'आपके ब्राउज़र में वॉयस रिकग्निशन समर्थित नहीं है',
+    recording_stopped: 'रिकॉर्डिंग बंद',
+    speak_now: 'अब बोलें',
+    microphone_access_denied: 'कृपया अपने ब्राउज़र में माइक्रोफोन एक्सेस की अनुमति दें और फिर से कोशिश करें',
+    allow_microphone: 'माइक्रोफोन एक्सेस की अनुमति दें',
   },
   kn: {
     app_title: 'ಎಐ ರೈತರು',
@@ -246,6 +264,15 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     farmer_name: 'ರಾಜೇಶ್ ಕುಮಾರ್',
     location: 'ಕರ್ನಾಟಕ, ಭಾರತ',
     logout: 'ಲಾಗ್‌ಔಟ್',
+    // Voice Input Translations
+    start_recording: 'ಧ್ವನಿ ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಿ',
+    stop_recording: 'ಧ್ವನಿ ರೆಕಾರ್ಡಿಂಗ್ ನಿಲ್ಲಿಸಿ',
+    listening: 'ಕೇಳುತ್ತಿದೆ',
+    voice_not_supported: 'ನಿಮ್ಮ ಬ್ರೌಸರ್‌ನಲ್ಲಿ ಧ್ವನಿ ಗುರುತಿಸುವಿಕೆ ಬೆಂಬಲಿತವಾಗಿಲ್ಲ',
+    recording_stopped: 'ರೆಕಾರ್ಡಿಂಗ್ ನಿಲ್ಲಿದೆ',
+    speak_now: 'ಈಗ ಮಾತನಾಡಿ',
+    microphone_access_denied: 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಬ್ರೌಸರ್‌ನಲ್ಲಿ ಮೈಕ್ರೋಫೋನ್ ಪ್ರವೇಶವನ್ನು ಅನುಮತಿಸಿ ಮತ್ತು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ',
+    allow_microphone: 'ಮೈಕ್ರೋಫೋನ್ ಪ್ರವೇಶವನ್ನು ಅನುಮತಿಸಿ',
   },
 }
 
