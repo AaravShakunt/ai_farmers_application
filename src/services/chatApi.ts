@@ -11,6 +11,8 @@ export interface ChatRequest {
   temperature?: number
   max_tokens?: number
   enable_rag?: boolean
+  region?: string
+  category?: string
 }
 
 export interface ChatResponse {
@@ -46,7 +48,8 @@ export async function createNewChatSession(): Promise<ChatSession> {
     return {
       id: data.session_id,
       messages: [],
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      title: 'New Chat'
     }
   } catch (error) {
     console.error('Failed to create chat session:', error)
@@ -63,6 +66,8 @@ export async function sendMessageToGemini(
     temperature?: number
     max_tokens?: number
     enable_rag?: boolean
+    region?: string
+    category?: string
   } = {}
 ): Promise<ChatMessage> {
   try {
@@ -88,7 +93,9 @@ export async function sendMessageToGemini(
       messages: apiMessages,
       temperature: options.temperature || 0.7,
       max_tokens: options.max_tokens || 1024,
-      enable_rag: options.enable_rag || false
+      enable_rag: options.enable_rag || false,
+      region: options.region,
+      category: options.category
     }
 
     const response = await fetch(`${APP_CONFIG.api.baseUrl}/chat`, {

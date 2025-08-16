@@ -23,6 +23,10 @@ export function ChatInterface({
   chatHealthy
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('')
+  const [enableRAG, setEnableRAG] = useState(true)
+  const [ragRegion, setRAGRegion] = useState<string>('india')
+  const [ragCategory, setRAGCategory] = useState<string>('')
+  const [showRAGSettings, setShowRAGSettings] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -48,14 +52,14 @@ export function ChatInterface({
       const assistantMsg = await sendMessageToGemini(updatedMessages, {
         temperature: 0.7,
         max_tokens: 1024,
-        enable_rag: false
+        enable_rag: enableRAG,
+        region: ragRegion,
+        category: ragCategory
       })
-      
-      onSessionUpdate(prev => ({ 
-        ...prev, 
-        messages: [...prev.messages, assistantMsg] 
-      }))
-      
+
+      // Add assistant message to session
+      onSessionUpdate({ ...session, messages: [...session.messages, assistantMsg] })
+
       // Add menu message after assistant response
       const menuMsg: ChatMessage = {
         id: uuid(),
@@ -63,10 +67,7 @@ export function ChatInterface({
         content: 'CHAT_MENU',
         createdAt: Date.now()
       }
-      onSessionUpdate(prev => ({ 
-        ...prev, 
-        messages: [...prev.messages, menuMsg] 
-      }))
+      onSessionUpdate({ ...session, messages: [...session.messages, menuMsg] })
     } catch (error) {
       console.error('Failed to send message:', error)
       
@@ -77,10 +78,7 @@ export function ChatInterface({
         content: 'Sorry, I encountered an error. Please check your connection and try again.',
         createdAt: Date.now()
       }
-      onSessionUpdate(prev => ({ 
-        ...prev, 
-        messages: [...prev.messages, errorMsg] 
-      }))
+      onSessionUpdate({ ...session, messages: [...session.messages, errorMsg] })
     }
     
     setLoading(false)
@@ -163,11 +161,107 @@ export function ChatInterface({
         <div ref={endRef} />
       </div>
 
+      {/* RAG Settings Modal */}
+      {showRAGSettings && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="bg-blue-500 text-white p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold">AI Enhancement Settings</h3>
+                <button 
+                  onClick={() => setShowRAGSettings(false)}
+                  className="text-white hover:text-gray-200 text-2xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+              <p className="text-xs opacity-80 mt-1">Configure knowledge base assistance</p>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              {/* Enable RAG Toggle */}
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-700">
+                  Knowledge Base Assistance
+                </label>
+                <button
+                  onClick={() => setEnableRAG(!enableRAG)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    enableRAG ? 'bg-blue-600' : 'bg-gray-200'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      enableRAG ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {enableRAG && (
+                <>
+                  {/* Region Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Region
+                    </label>
+                    <select
+                      value={ragRegion}
+                      onChange={(e) => setRAGRegion(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="india">India</option>
+                      <option value="usa">United States</option>
+                      <option value="australia">Australia</option>
+                      <option value="general">General</option>
+                    </select>
+                  </div>
+
+                  {/* Category Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Category (Optional)
+                    </label>
+                    <select
+                      value={ragCategory}
+                      onChange={(e) => setRAGCategory(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">All Categories</option>
+                      <option value="crop_management">Crop Management</option>
+                      <option value="pest_disease">Pest & Disease</option>
+                      <option value="weather">Weather</option>
+                      <option value="market_prices">Market Prices</option>
+                      <option value="equipment">Equipment</option>
+                    </select>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Input Area */}
       {!ended && (
         <div className="fixed inset-x-0 bottom-16 bg-gradient-to-t from-white via-white to-white/95 backdrop-blur-sm border-t border-gray-200/50 py-4 px-2 z-10 shadow-lg">
           <div className="mx-auto max-w-screen-md px-2">
             <div className="flex items-center justify-center space-x-2">
+              {/* RAG Settings Button */}
+              <button
+                onClick={() => setShowRAGSettings(true)}
+                className={`p-2.5 rounded-2xl transition-all duration-200 ${
+                  enableRAG
+                    ? 'bg-blue-500 text-white shadow-lg hover:bg-blue-600'
+                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                }`}
+                title="AI Enhancement Settings"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+              </button>
+              
               {/* Message Input Container */}
               <div className="flex-1 max-w-[85%] relative">
                 <div className="relative bg-white rounded-3xl shadow-lg border border-gray-200 focus-within:border-green-500 focus-within:ring-2 focus-within:ring-green-200 transition-all duration-200">
