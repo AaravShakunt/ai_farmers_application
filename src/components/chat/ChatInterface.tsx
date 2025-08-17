@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { v4 as uuid } from 'uuid'
 import type { ChatMessage, ChatSession } from '../../types'
 import { sendMessageToGemini } from '../../services/chatApi'
+import { OnlineVoiceInput } from '../ui/OnlineVoiceInput'
+import { OfflineVoiceInput } from '../ui/OfflineVoiceInput'
+import { VoiceSupport } from '../ui/VoiceSupport'
 
 interface ChatInterfaceProps {
   session: ChatSession
@@ -33,19 +36,20 @@ export function ChatInterface({
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [session.messages.length])
 
-  const handleSend = async () => {
-    if (!input.trim() || !chatHealthy || loading || ended) return
+  const handleSend = async (messageText?: string) => {
+    const textToSend = messageText || input.trim()
+    if (!textToSend || !chatHealthy || loading || ended) return
     
     const userMsg: ChatMessage = { 
       id: uuid(), 
       role: 'user', 
-      content: input.trim(), 
+      content: textToSend, 
       createdAt: Date.now() 
     }
     const updatedMessages = [...session.messages, userMsg]
     
     onSessionUpdate({ ...session, messages: updatedMessages })
-    setInput('')
+    if (!messageText) setInput('')
     setLoading(true)
     
     try {
@@ -56,10 +60,9 @@ export function ChatInterface({
         region: ragRegion,
         category: ragCategory
       })
-
-      // Add assistant message to session
-      onSessionUpdate({ ...session, messages: [...session.messages, assistantMsg] })
-
+      
+      onSessionUpdate({ ...session, messages: [...updatedMessages, assistantMsg] })
+      
       // Add menu message after assistant response
       const menuMsg: ChatMessage = {
         id: uuid(),
@@ -67,7 +70,10 @@ export function ChatInterface({
         content: 'CHAT_MENU',
         createdAt: Date.now()
       }
-      onSessionUpdate({ ...session, messages: [...session.messages, menuMsg] })
+      onSessionUpdate({ 
+        ...session, 
+        messages: [...session.messages, menuMsg] 
+      })
     } catch (error) {
       console.error('Failed to send message:', error)
       
@@ -78,7 +84,10 @@ export function ChatInterface({
         content: 'Sorry, I encountered an error. Please check your connection and try again.',
         createdAt: Date.now()
       }
-      onSessionUpdate({ ...session, messages: [...session.messages, errorMsg] })
+      onSessionUpdate({ 
+        ...session, 
+        messages: [...session.messages, errorMsg] 
+      })
     }
     
     setLoading(false)
@@ -96,6 +105,9 @@ export function ChatInterface({
 
   return (
     <>
+      {/* Voice Support Notice */}
+      <VoiceSupport />
+      
       {/* Chat Messages Area */}
       <div className="space-y-3 mb-20">
         {session.messages.map((m) => {
@@ -247,23 +259,22 @@ export function ChatInterface({
         <div className="fixed inset-x-0 bottom-16 bg-gradient-to-t from-white via-white to-white/95 backdrop-blur-sm border-t border-gray-200/50 py-4 px-2 z-10 shadow-lg">
           <div className="mx-auto max-w-screen-md px-2">
             <div className="flex items-center justify-center space-x-2">
-              {/* RAG Settings Button */}
-              <button
-                onClick={() => setShowRAGSettings(true)}
-                className={`p-2.5 rounded-2xl transition-all duration-200 ${
-                  enableRAG
-                    ? 'bg-blue-500 text-white shadow-lg hover:bg-blue-600'
-                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                }`}
-                title="AI Enhancement Settings"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-              </button>
+              {/* Voice Input Buttons */}
+              <div className="flex space-x-1 flex-shrink-0">
+                <OnlineVoiceInput
+                  onTranscript={(transcript) => handleSend(transcript)}
+                  disabled={!chatHealthy || loading || ended}
+                  className="flex-shrink-0"
+                />
+                <OfflineVoiceInput
+                  onTranscript={(transcript) => handleSend(transcript)}
+                  disabled={!chatHealthy || loading || ended}
+                  className="flex-shrink-0"
+                />
+              </div>
               
               {/* Message Input Container */}
-              <div className="flex-1 max-w-[85%] relative">
+              <div className="flex-1 max-w-[75%] relative">
                 <div className="relative bg-white rounded-3xl shadow-lg border border-gray-200 focus-within:border-green-500 focus-within:ring-2 focus-within:ring-green-200 transition-all duration-200">
                   <input
                     className="w-full bg-transparent text-gray-900 rounded-3xl px-6 py-3.5 pr-16 focus:outline-none placeholder-gray-500 text-base"
@@ -276,7 +287,7 @@ export function ChatInterface({
                   
                   {/* Send Button */}
                   <button
-                    onClick={handleSend}
+                    onClick={() => handleSend()}
                     disabled={!canSend}
                     className={`absolute right-2 top-1/2 transform -translate-y-1/2 p-2.5 rounded-2xl transition-all duration-200 ${
                       canSend 
