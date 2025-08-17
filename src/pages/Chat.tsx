@@ -204,6 +204,7 @@ export default function Chat() {
             setLoading={setLoading}
             ended={ended}
             chatHealthy={chatHealthy}
+            uploadedImages={uploadedImages}
           />
         )}
 

@@ -14,6 +14,7 @@ interface ChatInterfaceProps {
   setLoading: (loading: boolean) => void
   ended: boolean
   chatHealthy: boolean
+  uploadedImages?: any[] // For image context
 }
 
 export function ChatInterface({
@@ -23,7 +24,8 @@ export function ChatInterface({
   loading,
   setLoading,
   ended,
-  chatHealthy
+  chatHealthy,
+  uploadedImages = []
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('')
   const [enableRAG, setEnableRAG] = useState(true)
@@ -53,12 +55,25 @@ export function ChatInterface({
     setLoading(true)
     
     try {
+      // Prepare context for expert system
+      const context: Record<string, any> = {}
+      
+      // Add image context if images are uploaded for this session
+      const sessionImages = uploadedImages.filter(img => img.chatSessionId === session.id)
+      if (sessionImages.length > 0) {
+        // For now, we'll just indicate that images are available
+        // In a full implementation, you'd need to convert images to base64 or upload them
+        context.hasImages = true
+        context.imageCount = sessionImages.length
+        context.imageCategories = [...new Set(sessionImages.map(img => img.category))]
+      }
+      
       const assistantMsg = await sendMessageToGemini(updatedMessages, {
         temperature: 0.7,
         max_tokens: 1024,
-        enable_rag: enableRAG,
-        region: ragRegion,
-        category: ragCategory
+        use_expert_system: true,
+        expert_confidence_threshold: 10.0,
+        context: Object.keys(context).length > 0 ? context : undefined
       })
       
       const messagesWithAssistant = [...updatedMessages, assistantMsg]
@@ -152,6 +167,20 @@ export function ChatInterface({
                 }`}>
                   {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
+                
+                {/* Show expert system info for assistant messages */}
+                {m.role === 'assistant' && (m as any).expertInfo && (
+                  <div className="text-xs mt-2 pt-2 border-t border-gray-200">
+                    <div className="text-gray-600">
+                      🤖 Expert System: {(m as any).expertInfo.experts_consulted?.join(', ') || 'Standard'}
+                    </div>
+                    {(m as any).expertInfo.expert_processing_time && (
+                      <div className="text-gray-500">
+                        ⏱️ {((m as any).expertInfo.expert_processing_time).toFixed(2)}s
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )
