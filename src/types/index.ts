@@ -7,7 +7,7 @@ export type ChatMessage = {
 
 export type ChatSession = {
   id: string
-  title: string
+  title?: string
   messages: ChatMessage[]
   createdAt: number
   endedAt?: number

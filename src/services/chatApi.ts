@@ -10,13 +10,21 @@ export interface ChatRequest {
   messages: ChatApiMessage[]
   temperature?: number
   max_tokens?: number
-  enable_rag?: boolean
+  region?: string
+  category?: string
+  use_expert_system?: boolean
+  expert_confidence_threshold?: number
+  context?: Record<string, any>
 }
 
 export interface ChatResponse {
   message: string
   model: string
   finish_reason: string
+  expert_system_used?: boolean
+  experts_consulted?: string[]
+  expert_processing_time?: number
+  processing_metadata?: Record<string, any>
 }
 
 export interface NewSessionResponse {
@@ -62,7 +70,11 @@ export async function sendMessageToGemini(
   options: {
     temperature?: number
     max_tokens?: number
-    enable_rag?: boolean
+    region?: string
+    category?: string
+    use_expert_system?: boolean
+    expert_confidence_threshold?: number
+    context?: Record<string, any>
   } = {}
 ): Promise<ChatMessage> {
   try {
@@ -88,7 +100,21 @@ export async function sendMessageToGemini(
       messages: apiMessages,
       temperature: options.temperature || 0.7,
       max_tokens: options.max_tokens || 1024,
-      enable_rag: options.enable_rag || false
+      region: options.region,
+      category: options.category,
+      use_expert_system: options.use_expert_system !== false, // Default to true
+      expert_confidence_threshold: options.expert_confidence_threshold || 10.0,
+      context: options.context
+    }
+
+    // Log only in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Chat request:', {
+        use_expert_system: chatRequest.use_expert_system,
+        expert_confidence_threshold: chatRequest.expert_confidence_threshold,
+        context: chatRequest.context,
+        message_count: chatRequest.messages.length
+      })
     }
 
     const response = await fetch(`${APP_CONFIG.api.baseUrl}/chat`, {
@@ -105,13 +131,33 @@ export async function sendMessageToGemini(
     }
 
     const data: ChatResponse = await response.json()
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Chat response:', {
+        expert_system_used: data.expert_system_used,
+        experts_consulted: data.experts_consulted,
+        response_length: data.message?.length
+      })
+    }
 
-    return {
+    const assistantMessage: ChatMessage & { expertInfo?: any } = {
       id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       role: 'assistant',
       content: data.message,
       createdAt: Date.now()
     }
+
+    // Add expert system info if available
+    if (data.expert_system_used) {
+      assistantMessage.expertInfo = {
+        expert_system_used: data.expert_system_used,
+        experts_consulted: data.experts_consulted,
+        expert_processing_time: data.expert_processing_time,
+        processing_metadata: data.processing_metadata
+      }
+    }
+
+    return assistantMessage
   } catch (error) {
     console.error('Failed to send message to Gemini:', error)
     throw new Error('Failed to get AI response. Please try again.')
