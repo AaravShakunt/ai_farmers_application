@@ -61,7 +61,8 @@ export function ChatInterface({
         category: ragCategory
       })
       
-      onSessionUpdate({ ...session, messages: [...updatedMessages, assistantMsg] })
+      const messagesWithAssistant = [...updatedMessages, assistantMsg]
+      onSessionUpdate({ ...session, messages: messagesWithAssistant })
       
       // Add menu message after assistant response
       const menuMsg: ChatMessage = {
@@ -72,7 +73,7 @@ export function ChatInterface({
       }
       onSessionUpdate({ 
         ...session, 
-        messages: [...session.messages, menuMsg] 
+        messages: [...messagesWithAssistant, menuMsg] 
       })
     } catch (error) {
       console.error('Failed to send message:', error)
@@ -86,7 +87,7 @@ export function ChatInterface({
       }
       onSessionUpdate({ 
         ...session, 
-        messages: [...session.messages, errorMsg] 
+        messages: [...updatedMessages, errorMsg] 
       })
     }
     
