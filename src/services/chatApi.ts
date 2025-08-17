@@ -54,7 +54,8 @@ export async function createNewChatSession(): Promise<ChatSession> {
     return {
       id: data.session_id,
       messages: [],
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      title: 'New Chat'
     }
   } catch (error) {
     console.error('Failed to create chat session:', error)

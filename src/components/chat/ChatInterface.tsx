@@ -28,6 +28,10 @@ export function ChatInterface({
   uploadedImages = []
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('')
+  const [enableRAG, setEnableRAG] = useState(true)
+  const [ragRegion, setRAGRegion] = useState<string>('india')
+  const [ragCategory, setRAGCategory] = useState<string>('')
+  const [showRAGSettings, setShowRAGSettings] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -198,6 +202,87 @@ export function ChatInterface({
         )}
         <div ref={endRef} />
       </div>
+
+      {/* RAG Settings Modal */}
+      {showRAGSettings && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="bg-blue-500 text-white p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold">AI Enhancement Settings</h3>
+                <button 
+                  onClick={() => setShowRAGSettings(false)}
+                  className="text-white hover:text-gray-200 text-2xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+              <p className="text-xs opacity-80 mt-1">Configure knowledge base assistance</p>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              {/* Enable RAG Toggle */}
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-700">
+                  Knowledge Base Assistance
+                </label>
+                <button
+                  onClick={() => setEnableRAG(!enableRAG)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    enableRAG ? 'bg-blue-600' : 'bg-gray-200'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      enableRAG ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {enableRAG && (
+                <>
+                  {/* Region Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Region
+                    </label>
+                    <select
+                      value={ragRegion}
+                      onChange={(e) => setRAGRegion(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="india">India</option>
+                      <option value="usa">United States</option>
+                      <option value="australia">Australia</option>
+                      <option value="general">General</option>
+                    </select>
+                  </div>
+
+                  {/* Category Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Category (Optional)
+                    </label>
+                    <select
+                      value={ragCategory}
+                      onChange={(e) => setRAGCategory(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">All Categories</option>
+                      <option value="crop_management">Crop Management</option>
+                      <option value="pest_disease">Pest & Disease</option>
+                      <option value="weather">Weather</option>
+                      <option value="market_prices">Market Prices</option>
+                      <option value="equipment">Equipment</option>
+                    </select>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Input Area */}
       {!ended && (
