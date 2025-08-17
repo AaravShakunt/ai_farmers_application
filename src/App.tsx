@@ -3,6 +3,7 @@ import './App.css'
 import Home from './pages/Home'
 import Chat from './pages/Chat'
 import Images from './pages/Images'
+import ImageModels from './pages/ImageModels'
 import Settings from './pages/Settings'
 import LanguageSelection from './pages/LanguageSelection'
 import Tasks from './pages/Tasks'
@@ -39,6 +40,7 @@ export default function App() {
         <Route path="/chat" element={<Chat />} />
         <Route path="/workflow" element={<Workflow />} />
         <Route path="/images" element={<Images />} />
+        <Route path="/image-models" element={<ImageModels />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/language-selection" element={<LanguageSelection />} />
       </Routes>

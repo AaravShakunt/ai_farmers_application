@@ -48,7 +48,7 @@ export type WeatherData = {
   condition: string
 }
 
-export type ImageCategory = 'leaf' | 'soil' | 'plant'
+export type ImageCategory = 'leaf' | 'soil' | 'plant' | 'insect'
 
 export type QueuedRequest = {
   id: string

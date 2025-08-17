@@ -43,10 +43,11 @@ export default function Images() {
   return (
     <div className="mx-auto max-w-screen-md px-4 pb-24 pt-4 md:px-6">
       <h1 className="py-3 text-xl font-bold">{t('images')}</h1>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
         <Tile label="Leaf" category="leaf" img="https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=200" />
         <Tile label="Soil" category="soil" img="https://images.unsplash.com/photo-1527582892131-c1a3c1f0f3f4?q=80&w=200" />
         <Tile label="Plant" category="plant" img="https://images.unsplash.com/photo-1515096788709-a3cf4ce0a4a6?q=80&w=200" />
+        <Tile label="Insect" category="insect" img="https://images.unsplash.com/photo-1582045071449-84f6f0aba293?q=80&w=200" />
       </div>
 
       {state.loading && <div className="mt-4 text-sm text-gray-600">{t('analyzing')}</div>}

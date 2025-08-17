@@ -27,6 +27,7 @@ export function BottomNav() {
       <nav className="flex items-center justify-around max-w-lg mx-auto">
         {item('/', t('home'), '🏠')}
         {item('/tasks', t('tasks'), '📋')}
+        {item('/image-models', 'Models', '📸')}
         {item('/settings', t('settings'), '⚙️')}
       </nav>
     </div>
