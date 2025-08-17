@@ -1,27 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useLocation, Link } from 'react-router-dom'
 import { useI18n } from '../i18n'
 import { BottomNav } from '../components/ui/BottomNav'
+import { workflowApi, type WorkflowTask } from '../services/workflowApi'
+import { CacheManager } from '../lib/cache'
 
-interface WorkflowStep {
-  id: string
-  title: string
-  description: string
-  priority: 'High' | 'Medium' | 'Low'
-  category: 'Irrigation' | 'Fertilization' | 'Pest Control' | 'Harvesting' | 'Soil Management' | 'General'
-  estimatedTime: string
-  tools: string[]
-  completed: boolean
-  dueDate?: string
-  notes?: string
-}
 
 interface PlotWorkflow {
   plotId: string
   plotName: string
   crop: string
   lastUpdated: string
-  steps: WorkflowStep[]
+  tasks: WorkflowTask[]
 }
 
 export default function Workflow() {
@@ -33,11 +23,13 @@ export default function Workflow() {
   const [loading, setLoading] = useState(true)
   const [chatSummary, setChatSummary] = useState<any>(null)
   const [chatImages, setChatImages] = useState<any[]>([])
+  const isLoadingRef = useRef(false)
+  const hasLoadedChatWorkflow = useRef(false)
 
   // Check if we have chat data from navigation state
   useEffect(() => {
     if (location.state) {
-      const { chatSummary: summary, chatId, images } = location.state as any
+      const { chatSummary: summary, images } = location.state as any
       if (summary) {
         setChatSummary(summary)
         setChatImages(images || [])
@@ -45,153 +37,179 @@ export default function Workflow() {
     }
   }, [location.state])
 
-  // Mock workflow data based on plotId
+  // Load workflows - either from chat data or default for the plot
   useEffect(() => {
-    const mockWorkflows: { [key: string]: PlotWorkflow } = {
-      '1': {
-        plotId: '1',
-        plotName: 'North Field',
-        crop: 'Rice',
-        lastUpdated: '2024-08-10',
-        steps: [
-          {
-            id: '1',
-            title: 'Apply Nitrogen Fertilizer',
-            description: 'Apply 40kg/acre of Urea fertilizer to boost rice growth during tillering stage.',
-            priority: 'High',
-            category: 'Fertilization',
-            estimatedTime: '2-3 hours',
-            tools: ['Fertilizer spreader', 'Urea fertilizer', 'Protective gear'],
-            completed: false,
-            dueDate: '2024-08-15',
-            notes: 'Apply early morning or late evening to avoid heat stress'
-          },
-          {
-            id: '2',
-            title: 'Monitor for Brown Plant Hopper',
-            description: 'Check rice plants for brown plant hopper infestation, especially lower leaves.',
-            priority: 'High',
-            category: 'Pest Control',
-            estimatedTime: '1 hour',
-            tools: ['Magnifying glass', 'Notebook', 'Camera'],
-            completed: true,
-            dueDate: '2024-08-12'
-          },
-          {
-            id: '3',
-            title: 'Adjust Water Level',
-            description: 'Maintain 2-3 cm water level in rice field for optimal growth.',
-            priority: 'Medium',
-            category: 'Irrigation',
-            estimatedTime: '30 minutes',
-            tools: ['Water level gauge', 'Irrigation controls'],
-            completed: false,
-            dueDate: '2024-08-16'
-          },
-          {
-            id: '4',
-            title: 'Weed Control',
-            description: 'Remove weeds manually or apply selective herbicide to prevent competition.',
-            priority: 'Medium',
-            category: 'General',
-            estimatedTime: '4-5 hours',
-            tools: ['Hand weeder', 'Herbicide sprayer', 'Gloves'],
-            completed: false,
-            dueDate: '2024-08-20'
-          }
-        ]
-      },
-      '3': {
-        plotId: '3',
-        plotName: 'East Field',
-        crop: 'Cotton',
-        lastUpdated: '2024-08-08',
-        steps: [
-          {
-            id: '1',
-            title: 'Apply Potash Fertilizer',
-            description: 'Apply 30kg/acre of Muriate of Potash for better fiber quality.',
-            priority: 'High',
-            category: 'Fertilization',
-            estimatedTime: '2 hours',
-            tools: ['Fertilizer spreader', 'Potash fertilizer'],
-            completed: false,
-            dueDate: '2024-08-14'
-          },
-          {
-            id: '2',
-            title: 'Bollworm Monitoring',
-            description: 'Check cotton bolls for bollworm damage and apply treatment if needed.',
-            priority: 'High',
-            category: 'Pest Control',
-            estimatedTime: '2 hours',
-            tools: ['Insecticide sprayer', 'Bt spray', 'Protective gear'],
-            completed: false,
-            dueDate: '2024-08-13'
-          },
-          {
-            id: '3',
-            title: 'Soil Moisture Check',
-            description: 'Check soil moisture levels and adjust irrigation schedule.',
-            priority: 'Medium',
-            category: 'Soil Management',
-            estimatedTime: '1 hour',
-            tools: ['Soil moisture meter', 'Auger'],
-            completed: true,
-            dueDate: '2024-08-10'
-          }
-        ]
-      }
+    // Prevent multiple simultaneous calls
+    if (isLoadingRef.current) {
+      return
+    }
+    
+    // If we have chat data and already loaded chat workflow, don't reload
+    if (chatSummary && hasLoadedChatWorkflow.current) {
+      return
     }
 
-    setTimeout(() => {
-      if (plotId && mockWorkflows[plotId]) {
-        setWorkflow(mockWorkflows[plotId])
-      }
-      setLoading(false)
-    }, 1000)
-  }, [plotId])
+    const loadWorkflows = async () => {
+      isLoadingRef.current = true
+      try {
+        let tasks: WorkflowTask[] = []
+        let workflowData: PlotWorkflow
+        
+        const crop = plotId === '1' ? 'rice' : plotId === '3' ? 'cotton' : 'general'
 
-  const toggleStepCompletion = (stepId: string) => {
+        // First, check if we have cached workflows from the recent chat
+        const cachedWorkflow = CacheManager.loadWorkflow(plotId || '1', chatSummary?.chatId)
+        
+        if (cachedWorkflow && cachedWorkflow.generated_from_chat) {
+          // Use cached workflows (includes completion status and all tasks)
+          tasks = cachedWorkflow.tasks
+          hasLoadedChatWorkflow.current = true
+          
+          console.log('Loaded workflows from cache:', { 
+            totalTasks: tasks.length,
+            completedTasks: tasks.filter(t => t.completed).length,
+            cacheAge: Math.floor((Date.now() - cachedWorkflow.timestamp) / (1000 * 60))
+          })
+          
+        } else if (chatSummary && chatSummary.summary && !hasLoadedChatWorkflow.current) {
+          // No cache found but we have chat data - try to generate fresh workflows
+          try {
+            // Extract chat messages for workflow generation
+            const chatMessages = [
+              { role: 'user', content: 'Agricultural consultation' },
+              { role: 'assistant', content: chatSummary.summary }
+            ]
+            
+            const workflowResponse = await workflowApi.generateWorkflowsFromChat({
+              chat_messages: chatMessages,
+              plot_id: plotId || undefined,
+              crop_type: crop
+            })
+            
+            // If chat generation was successful, add default tasks + generated tasks
+            if (workflowResponse.generated_from_chat && workflowResponse.tasks.length > 0) {
+              // First get default tasks
+              try {
+                const defaultResponse = await workflowApi.getDefaultWorkflows(crop)
+                tasks = [...defaultResponse.tasks]
+              } catch (defaultError) {
+                // Fallback defaults if API fails
+                tasks = [
+                  { id: 'default_1', title: 'Daily field inspection', estimated_time: '1 hour', completed: false },
+                  { id: 'default_2', title: 'Check weather forecast', estimated_time: '15 min', completed: false },
+                  { id: 'default_3', title: 'Plan next day activities', estimated_time: '30 min', completed: false }
+                ]
+              }
+              
+              // Then add generated tasks with unique IDs
+              const generatedTasks = workflowResponse.tasks.map((task, index) => ({
+                ...task,
+                id: `chat_${index + 1}`
+              }))
+              tasks = [...tasks, ...generatedTasks]
+              hasLoadedChatWorkflow.current = true
+              
+              // Cache the generated workflows for future use
+              CacheManager.saveWorkflow(
+                workflowResponse.tasks, 
+                plotId || '1', 
+                chatSummary.chatId || 'unknown', 
+                true
+              )
+            } else {
+              // If generation failed or returned no tasks, use defaults only
+              const defaultResponse = await workflowApi.getDefaultWorkflows(crop)
+              tasks = defaultResponse.tasks
+            }
+          } catch (error) {
+            console.error('Failed to generate workflows from chat:', error)
+            // Fallback to defaults only
+            try {
+              const defaultResponse = await workflowApi.getDefaultWorkflows(crop)
+              tasks = defaultResponse.tasks
+            } catch (defaultError) {
+              tasks = [
+                { id: 'default_1', title: 'Daily field inspection', estimated_time: '1 hour', completed: false },
+                { id: 'default_2', title: 'Check weather forecast', estimated_time: '15 min', completed: false },
+                { id: 'default_3', title: 'Plan next day activities', estimated_time: '30 min', completed: false }
+              ]
+            }
+          }
+        } else {
+          // No chat data and no cache, just load default workflows
+          try {
+            const defaultResponse = await workflowApi.getDefaultWorkflows(crop)
+            tasks = defaultResponse.tasks
+          } catch (apiError) {
+            console.error('API call failed, using fallback tasks:', apiError)
+            tasks = [
+              { id: 'default_1', title: 'Daily field inspection', estimated_time: '1 hour', completed: false },
+              { id: 'default_2', title: 'Check weather forecast', estimated_time: '15 min', completed: false },
+              { id: 'default_3', title: 'Plan next day activities', estimated_time: '30 min', completed: false }
+            ]
+          }
+        }
+        
+        // Create workflow data structure
+        workflowData = {
+          plotId: plotId || '1',
+          plotName: plotId === '1' ? 'North Field' : plotId === '3' ? 'East Field' : 'Default Plot',
+          crop: plotId === '1' ? 'Rice' : plotId === '3' ? 'Cotton' : 'General',
+          lastUpdated: new Date().toISOString().split('T')[0],
+          tasks: tasks
+        }
+        
+        setWorkflow(workflowData)
+      } catch (error) {
+        console.error('Failed to load workflows:', error)
+        // Create minimal workflow structure with fallback tasks on error
+        const fallbackWorkflow = {
+          plotId: plotId || '1',
+          plotName: 'Default Plot',
+          crop: 'General',
+          lastUpdated: new Date().toISOString().split('T')[0],
+          tasks: [
+            { id: 'fallback_1', title: 'Daily field inspection', estimated_time: '1 hour', completed: false },
+            { id: 'fallback_2', title: 'Check weather forecast', estimated_time: '15 min', completed: false },
+            { id: 'fallback_3', title: 'Plan next day activities', estimated_time: '30 min', completed: false }
+          ]
+        }
+        setWorkflow(fallbackWorkflow)
+      } finally {
+        setLoading(false)
+        isLoadingRef.current = false
+      }
+    }
+    
+    loadWorkflows()
+  }, [plotId, chatSummary?.summary])
+
+  const toggleTaskCompletion = (taskId: string) => {
     if (!workflow) return
     
-    const updatedSteps = workflow.steps.map(step =>
-      step.id === stepId ? { ...step, completed: !step.completed } : step
+    const updatedTasks = workflow.tasks.map(task =>
+      task.id === taskId ? { ...task, completed: !task.completed } : task
     )
     
-    setWorkflow({ ...workflow, steps: updatedSteps })
+    const updatedWorkflow = { ...workflow, tasks: updatedTasks }
+    setWorkflow(updatedWorkflow)
+    
+    // Save updated tasks to cache
+    CacheManager.updateWorkflowTasks(updatedTasks, workflow.plotId)
   }
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'High': return 'bg-red-100 text-red-800 border-red-200'
-      case 'Medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      case 'Low': return 'bg-green-100 text-green-800 border-green-200'
-      default: return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
+  const deleteTask = (taskId: string) => {
+    if (!workflow) return
+    
+    const updatedTasks = workflow.tasks.filter(task => task.id !== taskId)
+    
+    const updatedWorkflow = { ...workflow, tasks: updatedTasks }
+    setWorkflow(updatedWorkflow)
+    
+    // Save updated tasks to cache
+    CacheManager.updateWorkflowTasks(updatedTasks, workflow.plotId)
   }
 
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'Irrigation': return '💧'
-      case 'Fertilization': return '🌱'
-      case 'Pest Control': return '🐛'
-      case 'Harvesting': return '🌾'
-      case 'Soil Management': return '🌍'
-      default: return '📋'
-    }
-  }
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'Irrigation': return 'bg-blue-50 border-blue-200'
-      case 'Fertilization': return 'bg-green-50 border-green-200'
-      case 'Pest Control': return 'bg-red-50 border-red-200'
-      case 'Harvesting': return 'bg-yellow-50 border-yellow-200'
-      case 'Soil Management': return 'bg-brown-50 border-brown-200'
-      default: return 'bg-gray-50 border-gray-200'
-    }
-  }
 
   if (loading) {
     return (
@@ -225,9 +243,9 @@ export default function Workflow() {
     )
   }
 
-  const completedSteps = workflow.steps.filter(step => step.completed).length
-  const totalSteps = workflow.steps.length
-  const progressPercentage = (completedSteps / totalSteps) * 100
+  const completedTasks = workflow.tasks.filter(task => task.completed).length
+  const totalTasks = workflow.tasks.length
+  const progressPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50/30 via-emerald-50/20 to-green-100/40">
@@ -260,7 +278,7 @@ export default function Workflow() {
                 <p className="text-sm text-gray-600">{workflow.crop} • {t('last_updated')}: {new Date(workflow.lastUpdated).toLocaleDateString()}</p>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-green-600">{completedSteps}/{totalSteps}</div>
+                <div className="text-2xl font-bold text-green-600">{completedTasks}/{totalTasks}</div>
                 <div className="text-xs text-gray-600">{t('completed')}</div>
               </div>
             </div>
@@ -329,84 +347,48 @@ export default function Workflow() {
           </div>
         )}
 
-        {/* Workflow Steps */}
-        <div className="space-y-4">
-          {workflow.steps.map((step, index) => (
-            <div key={step.id} className={`bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden ${step.completed ? 'opacity-75' : ''}`}>
-              {/* Step Header */}
-              <div className={`p-4 border-l-4 ${getCategoryColor(step.category)}`}>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start">
-                    <div className="flex items-center mr-3">
-                      <button
-                        onClick={() => toggleStepCompletion(step.id)}
-                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
-                          step.completed 
-                            ? 'bg-green-500 border-green-500 text-white' 
-                            : 'border-gray-300 hover:border-green-500'
-                        }`}
-                      >
-                        {step.completed && (
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        )}
-                      </button>
-                      <div className="ml-2 text-lg">{getCategoryIcon(step.category)}</div>
-                    </div>
-                    <div className="flex-1">
-                      <h3 className={`text-lg font-semibold ${step.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}>
-                        {step.title}
-                      </h3>
-                      <p className="text-sm text-gray-600 mt-1">{step.description}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col items-end space-y-2">
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(step.priority)}`}>
-                      {step.priority}
-                    </div>
-                    {step.dueDate && (
-                      <div className="text-xs text-gray-500">
-                        {t('due')}: {new Date(step.dueDate).toLocaleDateString()}
-                      </div>
+        {/* Workflow Tasks */}
+        <div className="space-y-3">
+          {workflow.tasks.map((task) => (
+            <div key={task.id} className={`bg-white rounded-lg border border-gray-200 shadow-sm p-4 ${task.completed ? 'opacity-60' : ''}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3 flex-1">
+                  <button
+                    onClick={() => toggleTaskCompletion(task.id)}
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                      task.completed 
+                        ? 'bg-green-500 border-green-500 text-white' 
+                        : 'border-gray-300 hover:border-green-500'
+                    }`}
+                  >
+                    {task.completed && (
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
                     )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Step Details */}
-              <div className="p-4 bg-gray-50">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-xs text-gray-600 mb-2">{t('estimated_time')}</div>
-                    <div className="text-sm font-semibold text-gray-800">{step.estimatedTime}</div>
+                  </button>
+                  
+                  <div className="flex-1">
+                    <h3 className={`font-medium ${task.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}>
+                      {task.title}
+                    </h3>
                   </div>
                   
-                  <div>
-                    <div className="text-xs text-gray-600 mb-2">{t('category')}</div>
-                    <div className="text-sm font-semibold text-gray-800">{step.category}</div>
+                  <div className="text-sm text-gray-600">
+                    {task.estimated_time}
                   </div>
                 </div>
-
-                {/* Tools Required */}
-                <div className="mt-4">
-                  <div className="text-xs text-gray-600 mb-2">{t('tools_required')}</div>
-                  <div className="flex flex-wrap gap-2">
-                    {step.tools.map((tool, toolIndex) => (
-                      <span key={toolIndex} className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
-                        {tool}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Notes */}
-                {step.notes && (
-                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div className="text-xs text-yellow-700 mb-1">{t('notes')}</div>
-                    <div className="text-sm text-yellow-800">{step.notes}</div>
-                  </div>
+                
+                {task.completed && (
+                  <button
+                    onClick={() => deleteTask(task.id)}
+                    className="ml-3 text-red-500 hover:text-red-700 transition-colors"
+                    title="Delete completed task"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
                 )}
               </div>
             </div>

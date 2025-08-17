@@ -3,7 +3,8 @@ import type { CropPriceDisplay, MandiPrice } from '../types'
 const CACHE_KEYS = {
   SELECTED_CROPS: 'mandi_selected_crops',
   PRICE_DATA: 'mandi_price_data',
-  PREVIOUS_PRICES: 'mandi_previous_prices'
+  PREVIOUS_PRICES: 'mandi_previous_prices',
+  WORKFLOW_CACHE: 'workflow_cache'
 } as const
 
 const CACHE_DURATION = 10 * 60 * 1000 // 10 minutes
@@ -17,6 +18,22 @@ interface CachedPriceData {
 interface CachedCrops {
   crops: CropPriceDisplay[]
   timestamp: number
+}
+
+interface WorkflowTask {
+  id: string
+  title: string
+  estimated_time: string
+  completed: boolean
+}
+
+interface CachedWorkflow {
+  tasks: WorkflowTask[]
+  plotId: string
+  chatId: string
+  timestamp: number
+  generated_from_chat: boolean
+  lastUpdated: number
 }
 
 export const CacheManager = {
@@ -126,10 +143,74 @@ export const CacheManager = {
     }
   },
 
+  // Workflow caching
+  saveWorkflow: (tasks: WorkflowTask[], plotId: string, chatId: string, generated_from_chat: boolean): void => {
+    try {
+      const cachedWorkflow: CachedWorkflow = {
+        tasks,
+        plotId,
+        chatId,
+        timestamp: Date.now(),
+        generated_from_chat,
+        lastUpdated: Date.now()
+      }
+      localStorage.setItem(CACHE_KEYS.WORKFLOW_CACHE, JSON.stringify(cachedWorkflow))
+    } catch (error) {
+      console.warn('Failed to save workflow to cache:', error)
+    }
+  },
+
+  // Update workflow tasks (for completion status changes)
+  updateWorkflowTasks: (tasks: WorkflowTask[], plotId: string): void => {
+    try {
+      const cached = localStorage.getItem(CACHE_KEYS.WORKFLOW_CACHE)
+      if (!cached) return
+
+      const cachedWorkflow: CachedWorkflow = JSON.parse(cached)
+      
+      // Only update if it's for the same plot
+      if (cachedWorkflow.plotId === plotId) {
+        cachedWorkflow.tasks = tasks
+        cachedWorkflow.lastUpdated = Date.now()
+        localStorage.setItem(CACHE_KEYS.WORKFLOW_CACHE, JSON.stringify(cachedWorkflow))
+      }
+    } catch (error) {
+      console.warn('Failed to update workflow tasks in cache:', error)
+    }
+  },
+
+  loadWorkflow: (plotId: string, chatId?: string): CachedWorkflow | null => {
+    try {
+      const cached = localStorage.getItem(CACHE_KEYS.WORKFLOW_CACHE)
+      if (!cached) return null
+
+      const cachedWorkflow: CachedWorkflow = JSON.parse(cached)
+      
+      // Check if this matches the current plot and chat session
+      if (cachedWorkflow.plotId === plotId && (!chatId || cachedWorkflow.chatId === chatId)) {
+        return cachedWorkflow
+      }
+
+      return null
+    } catch (error) {
+      console.warn('Failed to load workflow from cache:', error)
+      return null
+    }
+  },
+
+  clearWorkflowCache: (): void => {
+    try {
+      localStorage.removeItem(CACHE_KEYS.WORKFLOW_CACHE)
+    } catch (error) {
+      console.warn('Failed to clear workflow cache:', error)
+    }
+  },
+
   getCacheInfo: () => {
     try {
       const priceCache = localStorage.getItem(CACHE_KEYS.PRICE_DATA)
       const selectedCropsCache = localStorage.getItem(CACHE_KEYS.SELECTED_CROPS)
+      const workflowCache = localStorage.getItem(CACHE_KEYS.WORKFLOW_CACHE)
       
       let priceCacheInfo = null
       if (priceCache) {
@@ -142,15 +223,33 @@ export const CacheManager = {
         }
       }
 
+      let workflowCacheInfo = null
+      if (workflowCache) {
+        const data: CachedWorkflow = JSON.parse(workflowCache)
+        const ageMinutes = Math.floor((Date.now() - data.timestamp) / (1000 * 60))
+        const lastUpdatedMinutes = Math.floor((Date.now() - data.lastUpdated) / (1000 * 60))
+        workflowCacheInfo = {
+          age: ageMinutes,
+          lastUpdated: lastUpdatedMinutes,
+          plotId: data.plotId,
+          chatId: data.chatId,
+          taskCount: data.tasks.length,
+          completedTasks: data.tasks.filter(t => t.completed).length,
+          generated_from_chat: data.generated_from_chat
+        }
+      }
+
       return {
         hasSelectedCrops: !!selectedCropsCache,
-        priceCache: priceCacheInfo
+        priceCache: priceCacheInfo,
+        workflowCache: workflowCacheInfo
       }
     } catch (error) {
       console.warn('Failed to get cache info:', error)
       return {
         hasSelectedCrops: false,
-        priceCache: null
+        priceCache: null,
+        workflowCache: null
       }
     }
   }
