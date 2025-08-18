@@ -1,14 +1,24 @@
-import { useState } from 'react'
-import { useI18n, type Language } from '../i18n'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useTranslation } from '../contexts/TranslationContext'
+import type { SupportedLanguageCode } from '../config/translatable.config'
 import { BottomNav } from '../components/ui/BottomNav'
 import { APP_CONFIG, USER_CONFIG } from '../config'
+import { authStorage } from '../services/authApi'
+import type { UserData } from '../services/authApi'
 
 export default function Settings() {
-  const { lang, setLang, t } = useI18n()
-  const [showLanguageModal, setShowLanguageModal] = useState(false)
+  const { changeLanguage, currentLanguage, supportedLanguages } = useTranslation()
   const [showLocationModal, setShowLocationModal] = useState(false)
   const [showUnitsModal, setShowUnitsModal] = useState(false)
   const [showAboutModal, setShowAboutModal] = useState(false)
+  const [currentUser, setCurrentUser] = useState<UserData | null>(null)
+
+  // Get current user on component mount
+  useEffect(() => {
+    const user = authStorage.getCurrentUser()
+    setCurrentUser(user)
+  }, [])
   
   // Settings state - initialized from configuration
   const [notifications, setNotifications] = useState({
@@ -29,14 +39,11 @@ export default function Settings() {
     locationSharing: false,
   })
 
-  const getLanguageLabel = (langCode: Language) => {
-    switch (langCode) {
-      case 'en': return 'English'
-      case 'hi': return 'हिंदी (Hindi)'
-      case 'kn': return 'ಕನ್ನಡ (Kannada)'
-      default: return 'English'
-    }
+  const getCurrentLanguageLabel = () => {
+    const currentLang = supportedLanguages.find(lang => lang.code === currentLanguage)
+    return currentLang ? `${currentLang.nativeName} (${currentLang.name})` : 'English'
   }
+
 
   const SettingItem = ({ 
     title, 
@@ -125,20 +132,32 @@ export default function Settings() {
         
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">{t('settings')}</h1>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">Settings</h1>
           <p className="text-sm text-gray-600">Manage your app preferences</p>
         </div>
 
         {/* Profile Section */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-6 p-4">
           <div className="flex items-center">
-            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-              {USER_CONFIG.defaultProfile.initials}
+            <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center text-white text-2xl">
+              👨‍🌾
             </div>
             <div className="ml-4 flex-1">
-              <h3 className="text-lg font-semibold text-gray-800">{USER_CONFIG.defaultProfile.name}</h3>
-              <p className="text-sm text-gray-600">Farmer ID: {USER_CONFIG.defaultProfile.farmerId}</p>
-              <p className="text-xs text-gray-500">{location}</p>
+              <h3 className="text-lg font-semibold text-gray-800">
+                {currentUser ? currentUser.name : USER_CONFIG.defaultProfile.name}
+              </h3>
+              <p className="text-sm text-gray-600">
+                📱 {currentUser ? currentUser.mobile : 'Not logged in'}
+              </p>
+              {currentUser?.location && (
+                <div className="text-xs text-gray-500 mt-1">
+                  <p>📍 {currentUser.location.address}</p>
+                  <p>Coordinates: {currentUser.location.latitude.toFixed(6)}, {currentUser.location.longitude.toFixed(6)}</p>
+                </div>
+              )}
+              <p className="text-xs text-gray-400 mt-1">
+                Member since: {currentUser ? new Date(currentUser.created_at).toLocaleDateString() : 'N/A'}
+              </p>
             </div>
             <button className="text-green-600 hover:text-green-700">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -155,15 +174,9 @@ export default function Settings() {
           </div>
           <div className="p-4">
             <SettingItem
-              title="Language"
-              subtitle="App display language"
-              value={getLanguageLabel(lang)}
-              onClick={() => setShowLanguageModal(true)}
-            />
-            <SettingItem
               title="Location"
               subtitle="Your farming location"
-              value={location}
+              value={currentUser?.location?.address || location}
               onClick={() => setShowLocationModal(true)}
             />
             <SettingItem
@@ -175,72 +188,7 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Notifications */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-6">
-          <div className="p-4 border-b border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-800">Notifications</h2>
-          </div>
-          <div className="p-4">
-            <SettingItem
-              title="Weather Alerts"
-              subtitle="Get notified about weather changes"
-              type="toggle"
-              checked={notifications.weather}
-              onChange={(checked) => setNotifications({...notifications, weather: checked})}
-            />
-            <SettingItem
-              title="Market Prices"
-              subtitle="Daily price updates"
-              type="toggle"
-              checked={notifications.prices}
-              onChange={(checked) => setNotifications({...notifications, prices: checked})}
-            />
-            <SettingItem
-              title="Government Schemes"
-              subtitle="New scheme announcements"
-              type="toggle"
-              checked={notifications.schemes}
-              onChange={(checked) => setNotifications({...notifications, schemes: checked})}
-            />
-            <SettingItem
-              title="Task Reminders"
-              subtitle="Farming task reminders"
-              type="toggle"
-              checked={notifications.reminders}
-              onChange={(checked) => setNotifications({...notifications, reminders: checked})}
-            />
-          </div>
-        </div>
 
-        {/* Privacy & Data */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-6">
-          <div className="p-4 border-b border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-800">Privacy & Data</h2>
-          </div>
-          <div className="p-4">
-            <SettingItem
-              title="Analytics"
-              subtitle="Help improve the app"
-              type="toggle"
-              checked={privacy.analytics}
-              onChange={(checked) => setPrivacy({...privacy, analytics: checked})}
-            />
-            <SettingItem
-              title="Crash Reports"
-              subtitle="Send crash reports automatically"
-              type="toggle"
-              checked={privacy.crashReports}
-              onChange={(checked) => setPrivacy({...privacy, crashReports: checked})}
-            />
-            <SettingItem
-              title="Location Sharing"
-              subtitle="Share location for better recommendations"
-              type="toggle"
-              checked={privacy.locationSharing}
-              onChange={(checked) => setPrivacy({...privacy, locationSharing: checked})}
-            />
-          </div>
-        </div>
 
         {/* Support & Info */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-6">
@@ -278,9 +226,9 @@ export default function Settings() {
         {/* Footer */}
         <div className="text-center py-8 text-gray-500">
           <div className="text-2xl mb-2">🌾</div>
-          <div className="text-sm font-medium">{APP_CONFIG.name}</div>
-          <div className="text-xs">{APP_CONFIG.tagline}</div>
-          <div className="text-xs mt-2">{APP_CONFIG.copyright}</div>
+          <div className="text-sm font-medium">AI Farmers Assistant</div>
+          <div className="text-xs">Smart farming solutions powered by AI</div>
+          <div className="text-xs mt-2">© 2024 AI Farmers Assistant. All rights reserved.</div>
           <div className="flex justify-center space-x-4 mt-4 text-xs">
             <button className="text-green-600 hover:text-green-700">Privacy Policy</button>
             <button className="text-green-600 hover:text-green-700">Terms of Service</button>
@@ -288,31 +236,6 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Language Modal */}
-        <Modal
-          isOpen={showLanguageModal}
-          onClose={() => setShowLanguageModal(false)}
-          title="Select Language"
-        >
-          <div className="space-y-3">
-            {(['en', 'hi', 'kn'] as Language[]).map((langCode) => (
-              <button
-                key={langCode}
-                onClick={() => {
-                  setLang(langCode)
-                  setShowLanguageModal(false)
-                }}
-                className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                  lang === langCode 
-                    ? 'bg-green-50 border-green-500 text-green-700' 
-                    : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-900'
-                }`}
-              >
-                <div className="font-medium">{getLanguageLabel(langCode)}</div>
-              </button>
-            ))}
-          </div>
-        </Modal>
 
         {/* Location Modal */}
         <Modal
@@ -391,16 +314,16 @@ export default function Settings() {
         <Modal
           isOpen={showAboutModal}
           onClose={() => setShowAboutModal(false)}
-          title={`About ${APP_CONFIG.name}`}
+          title="About AI Farmers Assistant"
         >
           <div className="text-center">
             <div className="text-4xl mb-4">🌾</div>
-            <h3 className="text-xl font-bold text-gray-800 mb-2">{APP_CONFIG.name}</h3>
-            <p className="text-sm text-gray-600 mb-4">{APP_CONFIG.tagline}</p>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">AI Farmers Assistant</h3>
+            <p className="text-sm text-gray-600 mb-4">Smart farming solutions powered by AI</p>
             <div className="bg-gray-50 rounded-lg p-4 text-left space-y-2 text-sm">
               <div><strong>Version:</strong> {APP_CONFIG.version}</div>
               <div><strong>Build:</strong> {APP_CONFIG.build}</div>
-              <div><strong>Developer:</strong> {APP_CONFIG.developer}</div>
+              <div><strong>Developer:</strong> AI Farmers Team</div>
               <div><strong>Support:</strong> {APP_CONFIG.supportEmail}</div>
               <div><strong>Helpline:</strong> {APP_CONFIG.helpline}</div>
             </div>

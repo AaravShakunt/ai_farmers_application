@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import type { MarketPrice, CropPriceDisplay } from '../../types'
 import { useI18n } from '../../i18n'
-import { getLatestPricesForCommodities, getAveragePrice, type MandiPrice } from '../../services/mandiApi'
+import { fetchMultipleCropPrices, type BackendMarketPrice } from '../../services/marketPriceApi'
 import { CacheManager } from '../../lib/cache'
 
 type Props = { prices: MarketPrice[]; loading?: boolean }
@@ -54,18 +54,36 @@ export function PricesCard({ prices, loading }: Props) {
     { name: 'Banana', unit: 'per quintal', price: 0, change: 0, icon: '🍌' }
   ]
 
-  // Initialize component with cached data
+  // Initialize component with cached data and props
   useEffect(() => {
     const initializeComponent = () => {
       // Load cached selected crops
       const cachedCrops = CacheManager.loadSelectedCrops()
+      
+      // If we have cached crops, use them
       if (cachedCrops && cachedCrops.length > 0) {
         setSelectedCrops(cachedCrops)
-      } else {
-        // Default crops if no cache
+      } 
+      // If we have prices from props (home page cache), convert them to selected crops
+      else if (prices && prices.length > 0) {
+        const propsBasedCrops: CropPriceDisplay[] = prices.map(price => ({
+          name: price.crop,
+          unit: 'per quintal',
+          price: price.price,
+          change: price.change || 0,
+          icon: CROP_ICONS[price.crop] || '🌾',
+          market: price.market,
+          date: price.date
+        }))
+        setSelectedCrops(propsBasedCrops)
+        // Cache these crops for future use
+        CacheManager.saveSelectedCrops(propsBasedCrops)
+      } 
+      // Default crops if no cache and no props
+      else {
         setSelectedCrops([
-          { name: 'Rice', unit: 'per quintal', price: 0, change: 0, icon: '🌾' },
           { name: 'Wheat', unit: 'per quintal', price: 0, change: 0, icon: '🌾' },
+          { name: 'Rice', unit: 'per quintal', price: 0, change: 0, icon: '🌾' },
           { name: 'Tomato', unit: 'per quintal', price: 0, change: 0, icon: '🍅' }
         ])
       }
@@ -81,33 +99,33 @@ export function PricesCard({ prices, loading }: Props) {
     }
     
     initializeComponent()
-  }, [])
+  }, [prices])
 
   const fetchPricesForSelectedCrops = useCallback(async (forceRefresh: boolean = false) => {
     if (selectedCrops.length === 0) return
     
     setIsLoadingPrices(true)
     try {
-      const commodityNames = selectedCrops.map(crop => crop.name)
-      const mandiPrices = await getLatestPricesForCommodities(commodityNames, !forceRefresh)
+      const commodityNames = selectedCrops.map(crop => crop.name.toLowerCase())
+      const backendPrices = await fetchMultipleCropPrices(commodityNames)
       
       setSelectedCrops(prevCrops => {
         const updatedCrops = prevCrops.map(crop => {
-          const mandiPrice = mandiPrices.find(mp => 
-            mp.commodity.toLowerCase().includes(crop.name.toLowerCase())
+          const backendPrice = backendPrices.find(bp => 
+            bp.crop_name.toLowerCase().includes(crop.name.toLowerCase())
           )
           
-          if (mandiPrice) {
-            const currentPrice = getAveragePrice(mandiPrice)
+          if (backendPrice) {
+            const currentPrice = Math.round(backendPrice.prices_per_quintal.modal)
             const previousPrice = previousPrices[crop.name] || currentPrice
             const change = previousPrice > 0 ? ((currentPrice - previousPrice) / previousPrice) * 100 : 0
             
             return {
               ...crop,
-              price: Math.round(currentPrice),
+              price: currentPrice,
               change: Number(change.toFixed(1)),
-              market: mandiPrice.market,
-              date: mandiPrice.arrival_date
+              market: backendPrice.market_name,
+              date: backendPrice.date
             }
           }
           return crop
@@ -120,10 +138,10 @@ export function PricesCard({ prices, loading }: Props) {
       
       setPreviousPrices(prev => {
         const newPreviousPrices = { ...prev }
-        mandiPrices.forEach(mp => {
-          const price = getAveragePrice(mp)
+        backendPrices.forEach(bp => {
+          const price = Math.round(bp.prices_per_quintal.modal)
           if (price > 0) {
-            newPreviousPrices[mp.commodity] = Math.round(price)
+            newPreviousPrices[bp.crop_name] = price
           }
         })
         // Cache updated previous prices
@@ -134,7 +152,7 @@ export function PricesCard({ prices, loading }: Props) {
       // Update cache info
       setCacheInfo(CacheManager.getCacheInfo())
     } catch (error) {
-      console.error('Error fetching mandi prices:', error)
+      console.error('Error fetching market prices:', error)
     } finally {
       setIsLoadingPrices(false)
     }
@@ -213,7 +231,8 @@ export function PricesCard({ prices, loading }: Props) {
     })
   }
 
-  if (loading || isLoadingPrices) {
+  // Only show loading if we have no data at all and are still loading
+  if ((loading || isLoadingPrices) && prices.length === 0 && selectedCrops.every(crop => crop.price === 0)) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
         <div className="animate-pulse">
@@ -276,27 +295,15 @@ export function PricesCard({ prices, loading }: Props) {
             </div>
           )}
           
-          <div className="flex gap-2">
-            <button 
-              onClick={() => setIsModalOpen(true)}
-              className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center"
-            >
-              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Customize
-            </button>
-            <button 
-              onClick={refreshPrices}
-              disabled={isLoadingPrices}
-              className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white py-2 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center"
-              title="Refresh prices (clears cache)"
-            >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-          </div>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center"
+          >
+            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Customize
+          </button>
         </div>
       </div>
 

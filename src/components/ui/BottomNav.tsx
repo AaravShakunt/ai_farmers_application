@@ -1,9 +1,9 @@
 import { Link, useLocation } from 'react-router-dom'
-import { useI18n } from '../../i18n'
+import { useTranslation } from '../../contexts/TranslationContext'
 
 export function BottomNav() {
   const { pathname } = useLocation()
-  const { t } = useI18n()
+  const { t } = useTranslation()
   
   const item = (to: string, label: string, icon: string) => {
     const active = pathname === to
@@ -25,9 +25,10 @@ export function BottomNav() {
   return (
     <div className="fixed inset-x-0 bottom-0 z-20 bg-white border-t border-gray-200 shadow-lg">
       <nav className="flex items-center justify-around max-w-lg mx-auto">
-        {item('/', t('home'), '🏠')}
-        {item('/tasks', t('tasks'), '📋')}
-        {item('/settings', t('settings'), '⚙️')}
+        {item('/', t('navigation.home'), '🏠')}
+        {item('/tasks', t('navigation.tasks'), '📋')}
+        {item('/language-selection', 'Language', '🔄')}
+        {item('/settings', t('navigation.settings'), '⚙️')}
       </nav>
     </div>
   )

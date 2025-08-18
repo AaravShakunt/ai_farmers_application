@@ -1,14 +1,24 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import { useI18n } from '../../i18n'
+import { authStorage, authApi } from '../../services/authApi'
+import type { UserData } from '../../services/authApi'
 
 export function Header() {
   const location = useLocation()
+  const navigate = useNavigate()
   const { t } = useI18n()
   const [notificationCount] = useState(3) // Mock notification count
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [selectedOption, setSelectedOption] = useState<string | null>(null)
+  const [currentUser, setCurrentUser] = useState<UserData | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Get current user on component mount
+  useEffect(() => {
+    const user = authStorage.getCurrentUser()
+    setCurrentUser(user)
+  }, [])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -63,16 +73,6 @@ export function Header() {
             {t('home')}
           </Link>
           <Link 
-            to="/chat" 
-            className={`px-3 py-2 rounded-lg transition-all duration-200 ${
-              location.pathname.startsWith('/chat') 
-                ? 'bg-green-100 text-green-700 font-semibold shadow-sm' 
-                : 'text-gray-600 hover:text-green-600 hover:bg-green-50'
-            }`}
-          >
-            {t('chatbot')}
-          </Link>
-          <Link 
             to="/images" 
             className={`px-3 py-2 rounded-lg transition-all duration-200 ${
               location.pathname.startsWith('/images') 
@@ -84,27 +84,19 @@ export function Header() {
           </Link>
         </nav>
 
-        {/* Right Side - Notifications and Profile */}
+        {/* Right Side - Profile */}
         <div className="flex items-center space-x-3">
           
-          {/* Notification Bell */}
-          <button className="relative p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all duration-200">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-            {notificationCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold animate-pulse">
-                {notificationCount}
-              </span>
-            )}
-          </button>
-
           {/* Profile Dropdown */}
           <div className="relative flex items-center space-x-2">
             {/* User Info - Always visible on desktop */}
             <div className="hidden sm:block text-right">
-              <div className="text-sm font-medium text-gray-800">{t('farmer_name')}</div>
-              <div className="text-xs text-gray-500">{t('location')}</div>
+              <div className="text-sm font-medium text-gray-800">
+                {currentUser ? currentUser.name : t('farmer_name')}
+              </div>
+              <div className="text-xs text-gray-500">
+                {currentUser?.location?.address || t('location')}
+              </div>
             </div>
             
             {/* Clickable Avatar */}
@@ -119,8 +111,12 @@ export function Header() {
             {isProfileOpen && (
               <div ref={dropdownRef} className="absolute right-0 top-12 w-48 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-30">
                 <div className="px-4 py-3 border-b border-gray-100">
-                  <div className="text-sm font-medium text-gray-800">{t('farmer_name')}</div>
-                  <div className="text-xs text-gray-500">{t('location')}</div>
+                  <div className="text-sm font-medium text-gray-800">
+                    {currentUser ? currentUser.name : t('farmer_name')}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {currentUser?.mobile || t('location')}
+                  </div>
                 </div>
                 <Link 
                   to="/settings" 
@@ -152,8 +148,11 @@ export function Header() {
                   onClick={() => {
                     setSelectedOption('logout')
                     setTimeout(() => {
+                      authApi.logout()
+                      setCurrentUser(null)
                       setIsProfileOpen(false)
                       setSelectedOption(null)
+                      navigate('/login')
                     }, 150)
                   }}
                 >

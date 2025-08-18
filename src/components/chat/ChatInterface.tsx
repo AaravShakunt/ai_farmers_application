@@ -28,6 +28,7 @@ export function ChatInterface({
   uploadedImages = []
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('')
+  const [isVoiceRecording, setIsVoiceRecording] = useState(false)
   const [enableRAG, setEnableRAG] = useState(true)
   const [ragRegion, setRAGRegion] = useState<string>('india')
   const [ragCategory, setRAGCategory] = useState<string>('')
@@ -113,6 +114,21 @@ export function ChatInterface({
     const messagesWithoutMenu = session.messages.filter(msg => msg.content !== 'CHAT_MENU')
     onSessionUpdate({ ...session, messages: messagesWithoutMenu })
   }
+
+  // Handle real-time voice transcript updates
+  const handleVoiceTranscriptChange = (transcript: string) => {
+    setInput(transcript)
+  }
+
+  // Handle voice recording state changes
+  const handleVoiceRecordingChange = (isRecording: boolean) => {
+    setIsVoiceRecording(isRecording)
+    if (!isRecording) {
+      // Clear input when recording stops (transcript will be sent via onTranscript)
+      setInput('')
+    }
+  }
+
 
   const canSend = useMemo(() => 
     !!input.trim() && !loading && !ended && chatHealthy, 
@@ -286,55 +302,51 @@ export function ChatInterface({
 
       {/* Input Area */}
       {!ended && (
-        <div className="fixed inset-x-0 bottom-16 bg-gradient-to-t from-white via-white to-white/95 backdrop-blur-sm border-t border-gray-200/50 py-4 px-2 z-10 shadow-lg">
-          <div className="mx-auto max-w-screen-md px-2">
-            <div className="flex items-center justify-center space-x-2">
-              {/* Voice Input Buttons */}
-              <div className="flex space-x-1 flex-shrink-0">
-                <OnlineVoiceInput
-                  onTranscript={(transcript) => handleSend(transcript)}
-                  disabled={!chatHealthy || loading || ended}
-                  className="flex-shrink-0"
-                />
-                <OfflineVoiceInput
-                  onTranscript={(transcript) => handleSend(transcript)}
-                  disabled={!chatHealthy || loading || ended}
-                  className="flex-shrink-0"
-                />
-              </div>
-              
-              {/* Message Input Container */}
-              <div className="flex-1 max-w-[75%] relative">
-                <div className="relative bg-white rounded-3xl shadow-lg border border-gray-200 focus-within:border-green-500 focus-within:ring-2 focus-within:ring-green-200 transition-all duration-200">
-                  <input
-                    className="w-full bg-transparent text-gray-900 rounded-3xl px-6 py-3.5 pr-16 focus:outline-none placeholder-gray-500 text-base"
-                    placeholder={chatHealthy ? "Type a message..." : "Chat service unavailable"}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleSend() }}
-                    disabled={!chatHealthy}
-                  />
-                  
-                  {/* Send Button */}
-                  <button
-                    onClick={() => handleSend()}
-                    disabled={!canSend}
-                    className={`absolute right-2 top-1/2 transform -translate-y-1/2 p-2.5 rounded-2xl transition-all duration-200 ${
-                      canSend 
-                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105' 
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
+        <div className="fixed inset-x-0 bottom-16 bg-white border-t border-gray-200 py-4 px-4 z-10 shadow-lg">
+          <div className="mx-auto max-w-screen-md flex items-center space-x-3">
+            {/* Voice Input Button */}
+            <OnlineVoiceInput
+              onTranscript={(transcript) => handleSend(transcript)}
+              onTranscriptChange={handleVoiceTranscriptChange}
+              onRecordingChange={handleVoiceRecordingChange}
+              disabled={!chatHealthy || loading || ended}
+              className="flex-shrink-0"
+            />
+
+            {/* Input Field */}
+            <input
+              type="text"
+              className="flex-1 bg-gray-50 text-gray-900 px-4 py-3 rounded-2xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 focus:outline-none placeholder-gray-500 text-base"
+              placeholder={chatHealthy ? "Type a message..." : "Type a message... (limited functionality)"}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { 
+                if (e.key === 'Enter' && !e.shiftKey) { 
+                  e.preventDefault(); 
+                  handleSend(); 
+                } 
+              }}
+              disabled={loading || ended}
+              autoComplete="off"
+            />
+            
+            {/* Send Button */}
+            <button
+              type="button"
+              onClick={() => handleSend()}
+              disabled={!canSend}
+              className={`flex-shrink-0 px-4 py-3 rounded-2xl transition-all duration-200 ${
+                canSend 
+                  ? 'bg-green-500 hover:bg-green-600 text-white' 
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              Send
+            </button>
           </div>
         </div>
       )}
+
     </>
   )
 }

@@ -16,8 +16,12 @@ export type ChatSession = {
 
 export type MarketPrice = {
   crop: string
-  pricePerKg: number
-  unit: 'kg'
+  price: number
+  pricePerKg?: number
+  unit?: string
+  change?: number
+  market?: string
+  date?: string
 }
 
 export type MandiPrice = {
@@ -46,6 +50,23 @@ export type WeatherData = {
   temperatureC: number
   humidityPct: number
   condition: string
+  location?: {
+    lat: number
+    lon: number
+  }
+  // Extended weather data
+  apparentTemperature?: number
+  windSpeed?: number
+  windDirection?: number
+  pressure?: number
+  precipitation?: number
+  cloudCover?: number
+  uvIndex?: number
+  visibility?: number
+  dewPoint?: number
+  isDay?: boolean
+  weatherCode?: number
+  lastUpdated?: string
 }
 
 export type ImageCategory = 'leaf' | 'soil' | 'plant'
@@ -58,4 +79,3 @@ export type QueuedRequest = {
   headers?: Record<string, string>
   createdAt: number
 }
-

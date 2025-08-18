@@ -4,12 +4,16 @@ import { useI18n } from '../../i18n'
 
 interface OnlineVoiceInputProps {
   onTranscript: (text: string) => void
+  onTranscriptChange?: (text: string) => void
+  onRecordingChange?: (isRecording: boolean) => void
   disabled?: boolean
   className?: string
 }
 
 export function OnlineVoiceInput({ 
   onTranscript, 
+  onTranscriptChange,
+  onRecordingChange,
   disabled = false, 
   className = ''
 }: OnlineVoiceInputProps) {
@@ -40,9 +44,12 @@ export function OnlineVoiceInput({
     }
   }, [])
 
-  const handleTranscriptChange = useCallback((_transcript: string) => {
-    // Real-time transcript updates (optional for UX)
-  }, [])
+  const handleTranscriptChange = useCallback((transcript: string) => {
+    // Send real-time transcript updates to input field
+    if (onTranscriptChange) {
+      onTranscriptChange(transcript)
+    }
+  }, [onTranscriptChange])
 
   const handleError = useCallback((error: string) => {
     console.error('Voice recording error:', error)
@@ -64,7 +71,11 @@ export function OnlineVoiceInput({
 
   useEffect(() => {
     setIsListening(voiceState.isRecording)
-  }, [voiceState.isRecording])
+    // Notify parent component about recording state changes
+    if (onRecordingChange) {
+      onRecordingChange(voiceState.isRecording)
+    }
+  }, [voiceState.isRecording, onRecordingChange])
 
   // Handle voice completion
   useEffect(() => {
@@ -143,12 +154,12 @@ export function OnlineVoiceInput({
         )}
       </div>
 
-      {/* Real-time transcript display */}
+      {/* Real-time transcript display - Mobile optimized */}
       {isListening && voiceState.transcript && (
-        <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-75 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap max-w-xs overflow-hidden">
+        <div className="fixed top-20 left-4 right-4 z-50 bg-black bg-opacity-90 text-white text-sm px-4 py-3 rounded-xl shadow-lg backdrop-blur-sm border border-gray-600 md:absolute md:bottom-full md:mb-2 md:left-1/2 md:transform md:-translate-x-1/2 md:top-auto md:left-auto md:right-auto md:max-w-xs md:text-xs md:px-3 md:py-2">
           <div className="text-center">
-            <div className="opacity-75">{t('listening')}...</div>
-            <div className="mt-1 font-medium">{voiceState.transcript}</div>
+            <div className="opacity-75 text-xs md:text-xs">{t('listening')}...</div>
+            <div className="mt-1 font-medium break-words">{voiceState.transcript}</div>
           </div>
         </div>
       )}
